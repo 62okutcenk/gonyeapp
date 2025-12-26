@@ -1619,9 +1619,12 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
     task = await db.project_tasks.find_one({"id": task_id, "project_id": project_id}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Görev bulunamadı")
-    
-    old_status = task["status"]
-    
+
+    # Eski değerler (log için)
+    old_status = task.get("status")
+    old_assigned_to = task.get("assigned_to")
+    old_notes = task.get("notes")
+
     update_data = {
         "status": data.status,
         "updated_at": datetime.now(timezone.utc).isoformat()
@@ -1630,7 +1633,8 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
         update_data["notes"] = data.notes
     if data.assigned_to is not None:
         update_data["assigned_to"] = data.assigned_to
-        
+
+        # Bildirim (mevcut davranışı bozma)
         if data.assigned_to != user["id"]:
             project = await db.projects.find_one({"id": project_id}, {"name": 1, "_id": 0})
             await create_notification(
@@ -1641,24 +1645,79 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
                 "info",
                 f"/projects/{project_id}"
             )
-    
+
     await db.project_tasks.update_one({"id": task_id}, {"$set": update_data})
-    
-    # Log status change
-    if old_status != data.status:
+
+    # Alan adı (loglarda alan badge için)
+    area = None
+    area_name = None
+    if task.get("area_id"):
         area = await db.project_areas.find_one({"id": task.get("area_id")}, {"name": 1, "_id": 0})
+        area_name = area.get("name") if area else None
+
+    # 1) Status değişimi log (mevcut mantık korunuyor)
+    if old_status != data.status:
         await log_project_activity(
             project_id, user["tenant_id"], user["id"], user["full_name"],
             "task_status_changed",
             f"'{task['work_item_name']} - {task['subtask_name']}' görevi: {old_status} → {data.status}",
-            task.get("area_id"), area.get("name") if area else None
+            task.get("area_id"), area_name
         )
-    
-    # Update area status based on tasks
+
+    # 2) Atama değişimi log (yeni)
+    if data.assigned_to is not None and old_assigned_to != data.assigned_to:
+        old_user_name = None
+        new_user_name = None
+
+        if old_assigned_to:
+            old_user = await db.users.find_one({"id": old_assigned_to}, {"full_name": 1, "_id": 0})
+            old_user_name = old_user.get("full_name") if old_user else None
+
+        if data.assigned_to:
+            new_user = await db.users.find_one({"id": data.assigned_to}, {"full_name": 1, "_id": 0})
+            new_user_name = new_user.get("full_name") if new_user else None
+
+        # action belirle
+        if not old_assigned_to and data.assigned_to:
+            action = "task_assigned"
+            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevi {new_user_name or data.assigned_to} kişisine atandı."
+        elif old_assigned_to and not data.assigned_to:
+            action = "task_unassigned"
+            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevinin ataması kaldırıldı. (Önceki: {old_user_name or old_assigned_to})"
+        else:
+            action = "task_reassigned"
+            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevi: {old_user_name or old_assigned_to} → {new_user_name or data.assigned_to}"
+
+        await log_project_activity(
+            project_id, user["tenant_id"], user["id"], user["full_name"],
+            action,
+            desc,
+            task.get("area_id"), area_name,
+            {"old_assigned_to": old_assigned_to, "new_assigned_to": data.assigned_to}
+        )
+
+    # 3) Not değişimi log (yeni)
+    if data.notes is not None and old_notes != data.notes:
+        action = "task_note_updated"
+        if (old_notes is None or str(old_notes).strip() == "") and (str(data.notes).strip() != ""):
+            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevine not eklendi."
+        elif str(data.notes).strip() == "":
+            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevinin notu temizlendi."
+        else:
+            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevinin notu güncellendi."
+
+        await log_project_activity(
+            project_id, user["tenant_id"], user["id"], user["full_name"],
+            action,
+            desc,
+            task.get("area_id"), area_name
+        )
+
+    # Update area status based on tasks (mevcut davranış)
     if task.get("area_id"):
         area_tasks = await db.project_tasks.find({"area_id": task["area_id"]}, {"status": 1, "_id": 0}).to_list(1000)
         statuses = [t["status"] for t in area_tasks]
-        
+
         new_area_status = "planlandi"
         if all(s == "tamamlandi" for s in statuses):
             new_area_status = "tamamlandi"
@@ -1666,30 +1725,32 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
             new_area_status = "montaj"
         elif any(s == "uretimde" for s in statuses):
             new_area_status = "uretimde"
-        
+
         await db.project_areas.update_one(
             {"id": task["area_id"]},
             {"$set": {"status": new_area_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
-    
-    # Update project status
-    all_tasks = await db.project_tasks.find({"project_id": project_id}, {"status": 1, "_id": 0}).to_list(1000)
-    all_statuses = [t["status"] for t in all_tasks]
-    
-    new_project_status = "planlandi"
-    if all(s == "tamamlandi" for s in all_statuses):
-        new_project_status = "tamamlandi"
-    elif any(s == "montaj" for s in all_statuses):
-        new_project_status = "montaj"
-    elif any(s == "uretimde" for s in all_statuses):
-        new_project_status = "uretimde"
-    
-    await db.projects.update_one(
-        {"id": project_id},
-        {"$set": {"status": new_project_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
-    
+
+    # Update project status (mevcut davranış – senin dosyada bu kısım devam ediyordu)
+    # Not: Buradan sonrası sende nasıl devam ediyorsa aynı şekilde kalsın.
+    all_tasks = await db.project_tasks.find({"project_id": project_id}, {"status": 1, "_id": 0}).to_list(5000)
+    if all_tasks:
+        statuses = [t.get("status") for t in all_tasks]
+        new_project_status = "planlandi"
+        if all(s == "tamamlandi" for s in statuses):
+            new_project_status = "tamamlandi"
+        elif any(s == "montaj" for s in statuses):
+            new_project_status = "montaj"
+        elif any(s == "uretimde" for s in statuses):
+            new_project_status = "uretimde"
+
+        await db.projects.update_one(
+            {"id": project_id},
+            {"$set": {"status": new_project_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+
     return {"message": "Görev güncellendi"}
+
 
 # ==================== USER MANAGEMENT ROUTES ====================
 
@@ -1798,48 +1859,80 @@ async def get_unread_count(user: dict = Depends(get_current_user)):
 
 # ==================== FILE UPLOAD ROUTES ====================
 
+from fastapi import Form
+
 @api_router.post("/files/upload")
 async def upload_file(
-    project_id: str = None,
+    project_id: str = Form(None),
+    area_id: str = Form(None),
+    task_id: str = Form(None),
+    work_item_id: str = Form(None),
+    category: str = Form(None),  # ör: "cizim", "pdf", "foto", "diger"
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user)
 ):
     check_permission(user, "files.upload")
-    
+
+    # Proje erişimi (multi-tenant + assignment)
+    if project_id:
+        if not await can_access_project(user, project_id, area_id):
+            raise HTTPException(status_code=403, detail="Bu projeye erişim yetkiniz yok")
+
     # Create uploads directory
     upload_dir = ROOT_DIR / "uploads" / user["tenant_id"]
     upload_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate unique filename
     file_ext = Path(file.filename).suffix
     file_id = str(uuid.uuid4())
     filename = f"{file_id}{file_ext}"
     file_path = upload_dir / filename
-    
+
     # Save file
     with open(file_path, "wb") as f:
         content = await file.read()
         f.write(content)
-    
+
     # Save file metadata
     file_doc = {
         "id": file_id,
         "tenant_id": user["tenant_id"],
         "project_id": project_id,
+        "area_id": area_id,
+        "task_id": task_id,
+        "work_item_id": work_item_id,
+        "category": category,
         "original_name": file.filename,
         "filename": filename,
         "content_type": file.content_type,
         "size": len(content),
         "uploaded_by": user["id"],
+        "uploaded_by_name": user.get("full_name"),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.files.insert_one(file_doc)
-    
+
+    # Aktivite log (yeni)
+    if project_id:
+        area_name = None
+        if area_id:
+            area = await db.project_areas.find_one({"id": area_id}, {"name": 1, "_id": 0})
+            area_name = area.get("name") if area else None
+
+        await log_project_activity(
+            project_id, user["tenant_id"], user["id"], user["full_name"],
+            "file_uploaded",
+            f"'{file.filename}' dosyası yüklendi.",
+            area_id, area_name,
+            {"file_id": file_id, "category": category, "task_id": task_id, "work_item_id": work_item_id}
+        )
+
     return {
         "id": file_id,
         "original_name": file.filename,
         "url": f"/api/files/{file_id}"
     }
+
 
 @api_router.get("/files/{file_id}")
 async def get_file(file_id: str, user: dict = Depends(get_current_user)):
@@ -1860,29 +1953,71 @@ async def get_file(file_id: str, user: dict = Depends(get_current_user)):
     )
 
 @api_router.get("/files")
-async def list_files(project_id: str = None, user: dict = Depends(get_current_user)):
+async def list_files(
+    project_id: str = None,
+    area_id: str = None,
+    task_id: str = None,
+    work_item_id: str = None,
+    category: str = None,
+    user: dict = Depends(get_current_user)
+):
     query = {"tenant_id": user["tenant_id"]}
     if project_id:
+        # erişim
+        if not await can_access_project(user, project_id, area_id):
+            raise HTTPException(status_code=403, detail="Bu projeye erişim yetkiniz yok")
         query["project_id"] = project_id
-    
+    if area_id:
+        query["area_id"] = area_id
+    if task_id:
+        query["task_id"] = task_id
+    if work_item_id:
+        query["work_item_id"] = work_item_id
+    if category:
+        query["category"] = category
+
     files = await db.files.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     return files
+
 
 @api_router.delete("/files/{file_id}")
 async def delete_file(file_id: str, user: dict = Depends(get_current_user)):
     check_permission(user, "files.delete")
-    
+
     file_doc = await db.files.find_one({"id": file_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
     if not file_doc:
         raise HTTPException(status_code=404, detail="Dosya bulunamadı")
-    
+
+    # Proje erişimi (multi-tenant güvenliği)
+    project_id = file_doc.get("project_id")
+    area_id = file_doc.get("area_id")
+    if project_id:
+        if not await can_access_project(user, project_id, area_id):
+            raise HTTPException(status_code=403, detail="Bu projeye erişim yetkiniz yok")
+
+    # Aktivite log (yeni) - fiziksel silmeden önce
+    if project_id:
+        area_name = None
+        if area_id:
+            area = await db.project_areas.find_one({"id": area_id}, {"name": 1, "_id": 0})
+            area_name = area.get("name") if area else None
+
+        await log_project_activity(
+            project_id, user["tenant_id"], user["id"], user["full_name"],
+            "file_deleted",
+            f"'{file_doc.get('original_name', 'dosya')}' dosyası silindi.",
+            area_id, area_name,
+            {"file_id": file_id, "category": file_doc.get("category"), "task_id": file_doc.get("task_id"), "work_item_id": file_doc.get("work_item_id")}
+        )
+
     # Delete physical file
     file_path = ROOT_DIR / "uploads" / user["tenant_id"] / file_doc["filename"]
     if file_path.exists():
         file_path.unlink()
-    
+
     await db.files.delete_one({"id": file_id})
     return {"message": "Dosya silindi"}
+
 
 # Public endpoint for logo files (no auth required)
 @api_router.get("/public/files/{file_id}")
