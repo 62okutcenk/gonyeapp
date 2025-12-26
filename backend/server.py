@@ -947,7 +947,9 @@ async def log_project_activity(
         "metadata": metadata or {},
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    await db.project_activities.insert_one(activity)
+    # Create a copy without _id for insertion
+    activity_to_insert = {k: v for k, v in activity.items() if k != "_id"}
+    await db.project_activities.insert_one(activity_to_insert)
     return activity
 
 # Get project list (filtered by access)
