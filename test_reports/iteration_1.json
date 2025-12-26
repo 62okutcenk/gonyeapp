@@ -47,7 +47,7 @@
   ],
   "success_percentage": {
     "backend": "100% (26/26 tests passed)",
-    "frontend": "85% (core functionality working, minor session management issues)"
+    "frontend": "90% (core functionality working, minor session persistence issues)"
   },
   "should_call_test_agent_after_fix": "false",
   "should_main_agent_test_itself": "true"
