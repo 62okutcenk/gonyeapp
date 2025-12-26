@@ -5,10 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Building2, Upload, Loader2, ImageIcon, Sun, Moon } from "lucide-react";
+import { Building2, Upload, Loader2, ImageIcon, Sun, Moon, MapPin, Phone, Mail, FileText } from "lucide-react";
+import { getCities, getDistricts, getTaxOffices } from "@/data/turkeyData";
+import { formatPhoneNumber, formatTaxNumber } from "@/utils/formatters";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
@@ -19,8 +29,19 @@ export default function SetupSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "",
+    city: "",
+    district: "",
+    address: "",
+    contact_email: "",
+    phone: "",
+    tax_office: "",
+    tax_number: "",
     light_logo_url: "",
     dark_logo_url: "",
+  });
+  const [logoPreview, setLogoPreview] = useState({
+    light: null,
+    dark: null,
   });
 
   useEffect(() => {
@@ -30,12 +51,26 @@ export default function SetupSettingsPage() {
   const fetchTenant = async () => {
     try {
       const response = await axios.get(`${API_URL}/tenant`);
-      setTenant(response.data);
+      const data = response.data;
+      setTenant(data);
       setForm({
-        name: response.data.name,
-        light_logo_url: response.data.light_logo_url || "",
-        dark_logo_url: response.data.dark_logo_url || "",
+        name: data.name || "",
+        city: data.city || "",
+        district: data.district || "",
+        address: data.address || "",
+        contact_email: data.contact_email || "",
+        phone: data.phone || "",
+        tax_office: data.tax_office || "",
+        tax_number: data.tax_number || "",
+        light_logo_url: data.light_logo_url || "",
+        dark_logo_url: data.dark_logo_url || "",
       });
+      if (data.light_logo_url) {
+        setLogoPreview((prev) => ({ ...prev, light: data.light_logo_url }));
+      }
+      if (data.dark_logo_url) {
+        setLogoPreview((prev) => ({ ...prev, dark: data.dark_logo_url }));
+      }
     } catch (error) {
       console.error("Failed to fetch tenant:", error);
       toast.error("Firma bilgileri yüklenirken hata oluştu");
@@ -44,29 +79,45 @@ export default function SetupSettingsPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
+  const handleChange = (field, value) => {
+    setForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      
+      // Reset dependent fields
+      if (field === "city") {
+        updated.district = "";
+        updated.tax_office = "";
+      }
+      
+      return updated;
+    });
+  };
 
-    try {
-      await axios.put(`${API_URL}/tenant`, {
-        name: form.name,
-        light_logo_url: form.light_logo_url || null,
-        dark_logo_url: form.dark_logo_url || null,
-      });
-      toast.success("Firma ayarları güncellendi");
-      fetchTenant();
-    } catch (error) {
-      toast.error("Ayarlar güncellenirken hata oluştu");
-    } finally {
-      setSaving(false);
-    }
+  const handlePhoneChange = (value) => {
+    const formatted = formatPhoneNumber(value);
+    setForm((prev) => ({ ...prev, phone: formatted }));
+  };
+
+  const handleTaxNumberChange = (value) => {
+    const formatted = formatTaxNumber(value);
+    setForm((prev) => ({ ...prev, tax_number: formatted }));
   };
 
   const handleLogoUpload = async (e, type) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setLogoPreview((prev) => ({
+        ...prev,
+        [type]: event.target.result,
+      }));
+    };
+    reader.readAsDataURL(file);
+
+    // Upload file
     const formData = new FormData();
     formData.append("file", file);
 
@@ -83,6 +134,36 @@ export default function SetupSettingsPage() {
       toast.success("Logo yüklendi");
     } catch (error) {
       toast.error("Logo yüklenirken hata oluştu");
+      setLogoPreview((prev) => ({
+        ...prev,
+        [type]: null,
+      }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      await axios.put(`${API_URL}/tenant`, {
+        name: form.name,
+        city: form.city || null,
+        district: form.district || null,
+        address: form.address || null,
+        contact_email: form.contact_email || null,
+        phone: form.phone || null,
+        tax_office: form.tax_office || null,
+        tax_number: form.tax_number || null,
+        light_logo_url: form.light_logo_url || null,
+        dark_logo_url: form.dark_logo_url || null,
+      });
+      toast.success("Firma ayarları güncellendi");
+      fetchTenant();
+    } catch (error) {
+      toast.error("Ayarlar güncellenirken hata oluştu");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -129,11 +210,136 @@ export default function SetupSettingsPage() {
                 <Input
                   id="name"
                   value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) => handleChange("name", e.target.value)}
                   required
                   data-testid="tenant-name-input"
                 />
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="city">İl</Label>
+                  <Select
+                    value={form.city}
+                    onValueChange={(value) => handleChange("city", value)}
+                  >
+                    <SelectTrigger data-testid="city-select">
+                      <SelectValue placeholder="İl seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCities().map((city) => (
+                        <SelectItem key={city} value={city}>
+                          {city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="district">İlçe</Label>
+                  <Select
+                    value={form.district}
+                    onValueChange={(value) => handleChange("district", value)}
+                    disabled={!form.city}
+                  >
+                    <SelectTrigger data-testid="district-select">
+                      <SelectValue placeholder="İlçe seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getDistricts(form.city).map((district) => (
+                        <SelectItem key={district} value={district}>
+                          {district}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">
+                  <MapPin className="h-4 w-4 inline mr-1" />
+                  Açık Adres
+                </Label>
+                <Textarea
+                  id="address"
+                  value={form.address}
+                  onChange={(e) => handleChange("address", e.target.value)}
+                  placeholder="Mahalle, Sokak, Bina No..."
+                  rows={2}
+                  data-testid="address-input"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="contact_email">
+                    <Mail className="h-4 w-4 inline mr-1" />
+                    İletişim E-postası
+                  </Label>
+                  <Input
+                    id="contact_email"
+                    type="email"
+                    value={form.contact_email}
+                    onChange={(e) => handleChange("contact_email", e.target.value)}
+                    placeholder="iletisim@firma.com"
+                    data-testid="contact-email-input"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">
+                    <Phone className="h-4 w-4 inline mr-1" />
+                    Telefon
+                  </Label>
+                  <Input
+                    id="phone"
+                    value={form.phone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    placeholder="0 (xxx) xxx xx xx"
+                    data-testid="phone-input"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="tax_office">
+                    <FileText className="h-4 w-4 inline mr-1" />
+                    Vergi Dairesi
+                  </Label>
+                  <Select
+                    value={form.tax_office}
+                    onValueChange={(value) => handleChange("tax_office", value)}
+                    disabled={!form.city}
+                  >
+                    <SelectTrigger data-testid="tax-office-select">
+                      <SelectValue placeholder="Vergi dairesi seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getTaxOffices(form.city).map((office) => (
+                        <SelectItem key={office} value={office}>
+                          {office}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tax_number">Vergi Numarası</Label>
+                  <Input
+                    id="tax_number"
+                    value={form.tax_number}
+                    onChange={(e) => handleTaxNumberChange(e.target.value)}
+                    placeholder="10 veya 11 haneli"
+                    maxLength={11}
+                    data-testid="tax-number-input"
+                  />
+                </div>
+              </div>
+
               <div className="pt-2">
                 <p className="text-sm text-muted-foreground">
                   <strong>Oluşturulma:</strong>{" "}
@@ -165,19 +371,19 @@ export default function SetupSettingsPage() {
                   <Sun className="h-4 w-4" />
                   Açık Tema Logosu
                 </Label>
-                <div className="flex items-center gap-4">
-                  <div className="h-20 w-40 rounded-lg border bg-white flex items-center justify-center overflow-hidden">
-                    {form.light_logo_url ? (
+                <div className="flex items-start gap-4">
+                  <div className="h-24 w-48 rounded-xl border-2 border-dashed bg-white flex items-center justify-center overflow-hidden">
+                    {logoPreview.light ? (
                       <img
-                        src={form.light_logo_url}
+                        src={logoPreview.light}
                         alt="Light Logo"
-                        className="max-h-16 max-w-36 object-contain"
+                        className="max-h-20 max-w-44 object-contain"
                       />
                     ) : (
                       <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
                     )}
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <input
                       type="file"
                       id="light-logo"
@@ -191,14 +397,11 @@ export default function SetupSettingsPage() {
                         Yükle
                       </label>
                     </Button>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, SVG
+                    </p>
                   </div>
                 </div>
-                <Input
-                  placeholder="veya URL girin..."
-                  value={form.light_logo_url}
-                  onChange={(e) => setForm((p) => ({ ...p, light_logo_url: e.target.value }))}
-                  className="text-sm"
-                />
               </div>
 
               <Separator />
@@ -209,19 +412,19 @@ export default function SetupSettingsPage() {
                   <Moon className="h-4 w-4" />
                   Koyu Tema Logosu
                 </Label>
-                <div className="flex items-center gap-4">
-                  <div className="h-20 w-40 rounded-lg border bg-slate-900 flex items-center justify-center overflow-hidden">
-                    {form.dark_logo_url ? (
+                <div className="flex items-start gap-4">
+                  <div className="h-24 w-48 rounded-xl border-2 border-dashed bg-slate-900 flex items-center justify-center overflow-hidden">
+                    {logoPreview.dark ? (
                       <img
-                        src={form.dark_logo_url}
+                        src={logoPreview.dark}
                         alt="Dark Logo"
-                        className="max-h-16 max-w-36 object-contain"
+                        className="max-h-20 max-w-44 object-contain"
                       />
                     ) : (
                       <ImageIcon className="h-8 w-8 text-slate-700" />
                     )}
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <input
                       type="file"
                       id="dark-logo"
@@ -235,14 +438,11 @@ export default function SetupSettingsPage() {
                         Yükle
                       </label>
                     </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Koyu arka plan için
+                    </p>
                   </div>
                 </div>
-                <Input
-                  placeholder="veya URL girin..."
-                  value={form.dark_logo_url}
-                  onChange={(e) => setForm((p) => ({ ...p, dark_logo_url: e.target.value }))}
-                  className="text-sm"
-                />
               </div>
             </CardContent>
           </Card>
