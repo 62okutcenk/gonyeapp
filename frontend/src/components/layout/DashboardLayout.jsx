@@ -220,10 +220,6 @@ export default function DashboardLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tenant, setTenant] = useState(null);
 
-  useEffect(() => {
-    fetchTenant();
-  }, []);
-
   const fetchTenant = async () => {
     try {
       const response = await axios.get(`${API_URL}/tenant`);
@@ -232,6 +228,10 @@ export default function DashboardLayout() {
       console.error("Failed to fetch tenant:", error);
     }
   };
+
+  useEffect(() => {
+    fetchTenant();
+  }, []);
 
   const handleLogout = () => {
     logout();
