@@ -7,7 +7,7 @@ from datetime import datetime
 import time
 
 class CraftForgeAPITester:
-    def __init__(self, base_url="https://craftforge-4.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://woodcraft-hub-12.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.user_data = None
