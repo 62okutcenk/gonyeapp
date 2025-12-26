@@ -1194,6 +1194,25 @@ async def delete_file(file_id: str, user: dict = Depends(get_current_user)):
     await db.files.delete_one({"id": file_id})
     return {"message": "Dosya silindi"}
 
+# Public endpoint for logo files (no auth required)
+@api_router.get("/public/files/{file_id}")
+async def get_public_file(file_id: str):
+    from fastapi.responses import FileResponse
+    
+    file_doc = await db.files.find_one({"id": file_id}, {"_id": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="Dosya bulunamadı")
+    
+    file_path = ROOT_DIR / "uploads" / file_doc["tenant_id"] / file_doc["filename"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Dosya bulunamadı")
+    
+    return FileResponse(
+        file_path,
+        filename=file_doc["original_name"],
+        media_type=file_doc.get("content_type", "application/octet-stream")
+    )
+
 # ==================== DASHBOARD STATS ====================
 
 @api_router.get("/dashboard/stats")
