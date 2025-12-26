@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,8 @@ import {
   MoreHorizontal,
   Eye,
   Trash2,
+  MapPin,
+  Wallet,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -49,23 +52,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/utils/formatters";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
 const statusLabels = {
-  bekliyor: "Bekliyor",
   planlandi: "Planlandı",
   uretimde: "Üretimde",
-  kontrol: "Kontrol",
+  montaj: "Montaj",
   tamamlandi: "Tamamlandı",
 };
 
 const statusStyles = {
-  bekliyor: "status-bekliyor",
-  planlandi: "status-planlandi",
-  uretimde: "status-uretimde",
-  kontrol: "status-kontrol",
-  tamamlandi: "status-tamamlandi",
+  planlandi: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+  uretimde: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+  montaj: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+  tamamlandi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
 };
 
 export default function ProjectsPage() {
@@ -109,21 +111,33 @@ export default function ProjectsPage() {
     const matchesSearch =
       project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.customer_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || project.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  return (
-    <div className="space-y-6 animate-slide-in" data-testid="projects-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projeler</h1>
-          <p className="text-muted-foreground">
-            Tüm projelerinizi görüntüleyin ve yönetin
-          </p>
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-40" />
+          ))}
         </div>
-        <Button asChild data-testid="new-project-button">
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Projeler</h1>
+          <p className="text-muted-foreground">Tüm projelerinizi yönetin</p>
+        </div>
+        <Button asChild>
           <Link to="/projects/new">
             <Plus className="mr-2 h-4 w-4" />
             Yeni Proje
@@ -132,190 +146,155 @@ export default function ProjectsPage() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Proje veya müşteri ara..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="search-input"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48" data-testid="status-filter">
-                <SelectValue placeholder="Durum Filtresi" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm Durumlar</SelectItem>
-                {Object.entries(statusLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Proje veya müşteri ara..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Durum" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tüm Durumlar</SelectItem>
+            {Object.entries(statusLabels).map(([key, label]) => (
+              <SelectItem key={key} value={key}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Projects Table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="p-6 space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-12 w-12 rounded-lg" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                  <Skeleton className="h-6 w-20" />
-                </div>
-              ))}
-            </div>
-          ) : filteredProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center">
-              <FolderKanban className="h-16 w-16 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold">Proje bulunamadı</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {searchTerm || statusFilter !== "all"
-                  ? "Arama kriterlerinize uygun proje yok"
-                  : "Henüz proje oluşturulmamış"}
-              </p>
-              {!searchTerm && statusFilter === "all" && (
-                <Button className="mt-4" asChild>
-                  <Link to="/projects/new">
-                    <Plus className="mr-2 h-4 w-4" />
-                    İlk Projeyi Oluştur
-                  </Link>
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Proje</TableHead>
-                  <TableHead>Müşteri</TableHead>
-                  <TableHead>Durum</TableHead>
-                  <TableHead>İlerleme</TableHead>
-                  <TableHead>Tarih</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProjects.map((project) => (
-                  <TableRow
-                    key={project.id}
-                    className="cursor-pointer"
-                    data-testid={`project-row-${project.id}`}
-                  >
-                    <TableCell>
+      {/* Projects Grid */}
+      {filteredProjects.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FolderKanban className="h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-semibold">Proje bulunamadı</h3>
+            <p className="text-muted-foreground text-sm mt-1">
+              {searchTerm || statusFilter !== "all"
+                ? "Arama kriterlerinize uygun proje yok"
+                : "İlk projenizi oluşturmaya başlayın"}
+            </p>
+            {!searchTerm && statusFilter === "all" && (
+              <Button asChild className="mt-4">
+                <Link to="/projects/new">Proje Oluştur</Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProjects.map((project) => (
+            <Card key={project.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">
                       <Link
                         to={`/projects/${project.id}`}
-                        className="flex items-center gap-3 hover:text-primary transition-colors"
+                        className="hover:underline"
                       >
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <FolderKanban className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{project.name}</p>
-                          {project.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {project.description}
-                            </p>
-                          )}
-                        </div>
+                        {project.name}
                       </Link>
-                    </TableCell>
-                    <TableCell>
-                      {project.customer_name ? (
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{project.customer_name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={cn(statusStyles[project.status])}>
-                        {statusLabels[project.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${project.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          %{Math.round(project.progress)}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span className="text-sm">
-                          {new Date(project.created_at).toLocaleDateString("tr-TR")}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link to={`/projects/${project.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Görüntüle
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteId(project.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Sil
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    </CardTitle>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <User className="h-3.5 w-3.5" />
+                      {project.customer_name || "Müşteri belirtilmemiş"}
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link to={`/projects/${project.id}`}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Görüntüle
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => setDeleteId(project.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Sil
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Status & Areas */}
+                <div className="flex items-center justify-between">
+                  <Badge className={cn("font-medium", statusStyles[project.status])}>
+                    {statusLabels[project.status] || project.status}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {project.areas?.length || 0} Alan
+                  </div>
+                </div>
 
-      {/* Delete Confirmation Dialog */}
+                {/* Progress */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">İlerleme</span>
+                    <span className="font-medium">{Math.round(project.progress || 0)}%</span>
+                  </div>
+                  <Progress value={project.progress || 0} className="h-2" />
+                </div>
+
+                {/* Finance */}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Toplam:</span>
+                    <span className="font-semibold">
+                      {formatCurrency(project.finance?.total_agreed || 0)}
+                    </span>
+                  </div>
+                  {project.finance?.total_remaining > 0 && (
+                    <span className="text-xs text-orange-600 dark:text-orange-400">
+                      Kalan: {formatCurrency(project.finance.total_remaining)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Date */}
+                {project.due_date && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Termin: {new Date(project.due_date).toLocaleDateString("tr-TR")}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Delete Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Projeyi silmek istediğinize emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
-              Bu işlem geri alınamaz. Proje ve tüm ilişkili görevler kalıcı olarak silinecektir.
+              Bu işlem geri alınamaz. Projeye ait tüm alanlar, görevler ve tahsilatlar da silinecektir.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Sil
             </AlertDialogAction>
           </AlertDialogFooter>
