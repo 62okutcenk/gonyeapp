@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,17 +48,18 @@ import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
+// Menü tanımları - yetki anahtarları eklendi
 const navigation = [
-  { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Projeler", href: "/projects", icon: FolderKanban },
-  { name: "Kullanıcılar", href: "/users", icon: Users },
+  { name: "Panel", href: "/dashboard", icon: LayoutDashboard, permission: null }, // Herkes görebilir
+  { name: "Projeler", href: "/projects", icon: FolderKanban, permission: "projects.view" },
+  { name: "Kullanıcılar", href: "/users", icon: Users, permission: "users.view" },
 ];
 
 const setupNavigation = [
-  { name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers },
-  { name: "İş Kalemleri", href: "/setup/workitems", icon: Package },
-  { name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield },
-  { name: "Firma Ayarları", href: "/setup/settings", icon: Building2 },
+  { name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers, permission: "setup.groups" },
+  { name: "İş Kalemleri", href: "/setup/workitems", icon: Package, permission: "setup.workitems" },
+  { name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield, permission: "setup.roles" },
+  { name: "Firma Ayarları", href: "/setup/settings", icon: Building2, permission: "settings.manage" },
 ];
 
 // NavItem Component
@@ -91,7 +92,17 @@ const NavItem = ({ item, onClick, isCollapsed, isChild }) => (
 );
 
 const Sidebar = ({ onNavClick, tenant, isDark, isCollapsed, toggleSidebar, isMobile }) => {
+  const { hasPermission } = useAuth(); // Auth context'ten yetki fonksiyonunu al
   const [setupOpen, setSetupOpen] = useState(true);
+
+  // Yetkiye göre filtrelenmiş menüler
+  const filteredNav = useMemo(() => {
+    return navigation.filter(item => !item.permission || hasPermission(item.permission));
+  }, [hasPermission]);
+
+  const filteredSetupNav = useMemo(() => {
+    return setupNavigation.filter(item => !item.permission || hasPermission(item.permission));
+  }, [hasPermission]);
 
   const logoUrl = isDark ? tenant?.dark_logo_url : tenant?.light_logo_url;
   const fallbackLogo = isDark ? tenant?.light_logo_url : tenant?.dark_logo_url;
@@ -166,7 +177,7 @@ const Sidebar = ({ onNavClick, tenant, isDark, isCollapsed, toggleSidebar, isMob
       {/* Navigation Scroll Area */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
-          {navigation.map((item) => (
+          {filteredNav.map((item) => (
             <NavItem 
               key={item.href} 
               item={item} 
@@ -175,60 +186,65 @@ const Sidebar = ({ onNavClick, tenant, isDark, isCollapsed, toggleSidebar, isMob
             />
           ))}
 
-          {/* Separator */}
-          <div className="my-4 h-px bg-border/50 mx-2" />
-
           {/* Setup Section - Accordion Style */}
-          <div>
-            <button
-              onClick={handleSetupClick}
-              className={cn(
-                "group flex w-full items-center rounded-lg py-2 transition-all duration-300 min-h-[40px]",
-                isCollapsed ? "justify-center px-2" : "justify-between px-3 hover:bg-muted"
-              )}
-              title={isCollapsed ? "Kurulum" : undefined}
-            >
-              <div className="flex items-center gap-3">
-                <Settings className={cn("shrink-0 transition-all", isCollapsed ? "h-5 w-5" : "h-4 w-4")} />
-                <span className={cn(
-                  "whitespace-nowrap overflow-hidden transition-all duration-300 text-sm font-medium",
-                  isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                )}>
-                  Kurulum
-                </span>
-              </div>
-              {!isCollapsed && (
-                <ChevronDown
+          {/* Sadece alt elemanlardan en az biri görünürse başlığı göster */}
+          {filteredSetupNav.length > 0 && (
+            <>
+              {/* Separator */}
+              <div className="my-4 h-px bg-border/50 mx-2" />
+              
+              <div>
+                <button
+                  onClick={handleSetupClick}
                   className={cn(
-                    "h-3 w-3 text-muted-foreground transition-transform duration-200",
-                    setupOpen && "rotate-180"
+                    "group flex w-full items-center rounded-lg py-2 transition-all duration-300 min-h-[40px]",
+                    isCollapsed ? "justify-center px-2" : "justify-between px-3 hover:bg-muted"
                   )}
-                />
-              )}
-            </button>
-
-            {/* Sub Menu Container */}
-            <div 
-              className={cn(
-                "grid transition-all duration-300 ease-in-out",
-                setupOpen && !isCollapsed ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-              )}
-            >
-              <div className="overflow-hidden">
-                <div className="mt-1 flex flex-col gap-1 pb-2">
-                  {setupNavigation.map((item) => (
-                    <NavItem 
-                      key={item.href} 
-                      item={item} 
-                      onClick={onNavClick}
-                      isCollapsed={isCollapsed}
-                      isChild={true} // Add indentation
+                  title={isCollapsed ? "Kurulum" : undefined}
+                >
+                  <div className="flex items-center gap-3">
+                    <Settings className={cn("shrink-0 transition-all", isCollapsed ? "h-5 w-5" : "h-4 w-4")} />
+                    <span className={cn(
+                      "whitespace-nowrap overflow-hidden transition-all duration-300 text-sm font-medium",
+                      isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                    )}>
+                      Kurulum
+                    </span>
+                  </div>
+                  {!isCollapsed && (
+                    <ChevronDown
+                      className={cn(
+                        "h-3 w-3 text-muted-foreground transition-transform duration-200",
+                        setupOpen && "rotate-180"
+                      )}
                     />
-                  ))}
+                  )}
+                </button>
+
+                {/* Sub Menu Container */}
+                <div 
+                  className={cn(
+                    "grid transition-all duration-300 ease-in-out",
+                    setupOpen && !isCollapsed ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="mt-1 flex flex-col gap-1 pb-2">
+                      {filteredSetupNav.map((item) => (
+                        <NavItem 
+                          key={item.href} 
+                          item={item} 
+                          onClick={onNavClick}
+                          isCollapsed={isCollapsed}
+                          isChild={true} // Add indentation
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </nav>
       </ScrollArea>
     </div>

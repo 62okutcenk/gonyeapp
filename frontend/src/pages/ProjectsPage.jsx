@@ -1,19 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -22,17 +14,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  FolderKanban,
-  Plus,
-  Search,
-  Calendar,
-  User,
-  MoreHorizontal,
-  Eye,
-  Trash2,
-  MapPin,
-  Wallet,
+import { 
+  Plus, Search, Calendar, User, Briefcase, 
+  ArrowRight, MoreHorizontal, Filter 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,266 +24,182 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/utils/formatters";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
-const statusLabels = {
-  planlandi: "Planlandı",
-  uretimde: "Üretimde",
-  montaj: "Montaj",
-  tamamlandi: "Tamamlandı",
-};
-
-const statusStyles = {
-  planlandi: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  uretimde: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-  montaj: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  tamamlandi: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-};
-
 export default function ProjectsPage() {
+  const { token, hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [deleteId, setDeleteId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("active"); // active, stopped, completed
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [statusFilter]); // Filtre değişince yeniden çek
 
   const fetchProjects = async () => {
+    setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/projects`);
+      // Backend'e status parametresi gönderiyoruz
+      const response = await axios.get(`${API_URL}/projects`, {
+        params: { status: statusFilter }
+      });
       setProjects(response.data);
     } catch (error) {
-      console.error("Failed to fetch projects:", error);
-      toast.error("Projeler yüklenirken hata oluştu");
+      console.error("Projeler yüklenirken hata:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
+  const filteredProjects = projects.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    try {
-      await axios.delete(`${API_URL}/projects/${deleteId}`);
-      setProjects((prev) => prev.filter((p) => p.id !== deleteId));
-      toast.success("Proje silindi");
-    } catch (error) {
-      toast.error("Proje silinirken hata oluştu");
-    } finally {
-      setDeleteId(null);
-    }
-  };
+  const getStatusBadge = (status) => {
+    const styles = {
+      planlandi: "bg-blue-100 text-blue-800 border-blue-200",
+      uretimde: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      montaj: "bg-purple-100 text-purple-800 border-purple-200",
+      tamamlandi: "bg-green-100 text-green-800 border-green-200",
+      durduruldu: "bg-red-100 text-red-800 border-red-200",
+    };
+    
+    const labels = {
+      planlandi: "Planlandı",
+      uretimde: "Üretimde",
+      montaj: "Montajda",
+      tamamlandi: "Tamamlandı",
+      durduruldu: "Durduruldu",
+    };
 
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch =
-      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.customer_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || project.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-40" />
-          ))}
-        </div>
-      </div>
+      <Badge variant="outline" className={styles[status] || "bg-gray-100"}>
+        {labels[status] || status}
+      </Badge>
     );
-  }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projeler</h1>
-          <p className="text-muted-foreground">Tüm projelerinizi yönetin</p>
+          <h1 className="text-3xl font-bold tracking-tight">Projeler</h1>
+          <p className="text-muted-foreground mt-1">
+            Tüm marangozluk projelerinizi ve durumlarını buradan yönetin.
+          </p>
         </div>
-        <Button asChild>
-          <Link to="/projects/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Yeni Proje
-          </Link>
-        </Button>
+        
+        {hasPermission("projects.create") && (
+          <Button onClick={() => navigate("/projects/new")}>
+            <Plus className="mr-2 h-4 w-4" /> Yeni Proje
+          </Button>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-card p-4 rounded-lg border">
+        <Tabs defaultValue="active" className="w-full md:w-auto" onValueChange={setStatusFilter}>
+          <TabsList>
+            <TabsTrigger value="active">Aktif Projeler</TabsTrigger>
+            <TabsTrigger value="stopped">Durdurulanlar</TabsTrigger>
+            <TabsTrigger value="completed">Tamamlananlar</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Proje veya müşteri ara..."
+            className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Durum" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tüm Durumlar</SelectItem>
-            {Object.entries(statusLabels).map(([key, label]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Projects Grid */}
-      {filteredProjects.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FolderKanban className="h-12 w-12 text-muted-foreground/50" />
-            <h3 className="mt-4 text-lg font-semibold">Proje bulunamadı</h3>
-            <p className="text-muted-foreground text-sm mt-1">
-              {searchTerm || statusFilter !== "all"
-                ? "Arama kriterlerinize uygun proje yok"
-                : "İlk projenizi oluşturmaya başlayın"}
-            </p>
-            {!searchTerm && statusFilter === "all" && (
-              <Button asChild className="mt-4">
-                <Link to="/projects/new">Proje Oluştur</Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <Card key={project.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">
-                      <Link
-                        to={`/projects/${project.id}`}
-                        className="hover:underline"
-                      >
-                        {project.name}
-                      </Link>
-                    </CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <User className="h-3.5 w-3.5" />
-                      {project.customer_name || "Müşteri belirtilmemiş"}
+      <div className="rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[300px]">Proje Adı</TableHead>
+              <TableHead>Müşteri</TableHead>
+              <TableHead>Durum</TableHead>
+              <TableHead>İlerleme</TableHead>
+              <TableHead>Alanlar</TableHead>
+              <TableHead>Tarih</TableHead>
+              <TableHead className="text-right">İşlemler</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  Yükleniyor...
+                </TableCell>
+              </TableRow>
+            ) : filteredProjects.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  Proje bulunamadı.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredProjects.map((project) => (
+                <TableRow 
+                  key={project.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      {project.name}
                     </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link to={`/projects/${project.id}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Görüntüle
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => setDeleteId(project.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Sil
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Status & Areas */}
-                <div className="flex items-center justify-between">
-                  <Badge className={cn("font-medium", statusStyles[project.status])}>
-                    {statusLabels[project.status] || project.status}
-                  </Badge>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {project.areas?.length || 0} Alan
-                  </div>
-                </div>
-
-                {/* Progress */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">İlerleme</span>
-                    <span className="font-medium">{Math.round(project.progress || 0)}%</span>
-                  </div>
-                  <Progress value={project.progress || 0} className="h-2" />
-                </div>
-
-                {/* Finance */}
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-muted-foreground">Toplam:</span>
-                    <span className="font-semibold">
-                      {formatCurrency(project.finance?.total_agreed || 0)}
-                    </span>
-                  </div>
-                  {project.finance?.total_remaining > 0 && (
-                    <span className="text-xs text-orange-600 dark:text-orange-400">
-                      Kalan: {formatCurrency(project.finance.total_remaining)}
-                    </span>
-                  )}
-                </div>
-
-                {/* Date */}
-                {project.due_date && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Termin: {new Date(project.due_date).toLocaleDateString("tr-TR")}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Delete Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Projeyi silmek istediğinize emin misiniz?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bu işlem geri alınamaz. Projeye ait tüm alanlar, görevler ve tahsilatlar da silinecektir.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sil
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      {project.customer_name}
+                    </div>
+                  </TableCell>
+                  <TableCell>{getStatusBadge(project.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                       <div className="h-2 w-24 bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all" 
+                            style={{ width: `${project.progress}%` }} 
+                          />
+                       </div>
+                       <span className="text-xs text-muted-foreground">%{Math.round(project.progress)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="font-normal">
+                      {project.area_count || 0} Alan
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(project.created_at).toLocaleDateString("tr-TR")}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon">
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

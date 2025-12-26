@@ -98,6 +98,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // YENİ: Yetki kontrol fonksiyonu
+  const hasPermission = (permissionKey) => {
+    if (!user) return false;
+    if (user.is_admin) return true; // Admin her şeye yetkili
+    
+    // user.permissions backend'den UserResponse içinde gelmeli
+    const perms = user.permissions || [];
+    if (perms.includes("*")) return true; // Wildcard yetki
+    
+    return perms.includes(permissionKey);
+  };
+
   const value = {
     user,
     token,
@@ -107,6 +119,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     refreshUser,
+    hasPermission, // Context'e ekledik
     isAuthenticated: !!user,
   };
 
