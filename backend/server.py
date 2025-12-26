@@ -497,6 +497,10 @@ async def register(data: UserRegister):
     
     token = create_token(user["id"], tenant_id)
     
+    # Get tenant setup status
+    tenant_doc = await db.tenants.find_one({"id": tenant_id}, {"setup_completed": 1, "_id": 0})
+    setup_completed = tenant_doc.get("setup_completed", False) if tenant_doc else False
+    
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -507,6 +511,7 @@ async def register(data: UserRegister):
             role_id=user.get("role_id"),
             color=user["color"],
             is_admin=user["is_admin"],
+            setup_completed=setup_completed,
             created_at=user["created_at"]
         )
     )
@@ -519,6 +524,10 @@ async def login(data: UserLogin):
     
     token = create_token(user["id"], user["tenant_id"])
     
+    # Get tenant setup status
+    tenant_doc = await db.tenants.find_one({"id": user["tenant_id"]}, {"setup_completed": 1, "_id": 0})
+    setup_completed = tenant_doc.get("setup_completed", False) if tenant_doc else False
+    
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -529,12 +538,17 @@ async def login(data: UserLogin):
             role_id=user.get("role_id"),
             color=user.get("color", "#4a4036"),
             is_admin=user.get("is_admin", False),
+            setup_completed=setup_completed,
             created_at=user["created_at"]
         )
     )
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(user: dict = Depends(get_current_user)):
+    # Get tenant setup status
+    tenant_doc = await db.tenants.find_one({"id": user["tenant_id"]}, {"setup_completed": 1, "_id": 0})
+    setup_completed = tenant_doc.get("setup_completed", False) if tenant_doc else False
+    
     return UserResponse(
         id=user["id"],
         email=user["email"],
