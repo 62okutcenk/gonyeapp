@@ -405,8 +405,16 @@ async def register(data: UserRegister):
         tenant = {
             "id": str(uuid.uuid4()),
             "name": data.tenant_name,
+            "city": None,
+            "district": None,
+            "address": None,
+            "contact_email": None,
+            "phone": None,
+            "tax_office": None,
+            "tax_number": None,
             "light_logo_url": None,
             "dark_logo_url": None,
+            "setup_completed": False,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.tenants.insert_one(tenant)
