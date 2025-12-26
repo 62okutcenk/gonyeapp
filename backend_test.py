@@ -671,6 +671,11 @@ class CraftForgeAPITester:
             self.test_roles_and_permissions,
             self.test_setup_wizard_completion,
             self.test_user_auth_flow,
+            self.test_project_with_areas,
+            self.test_project_payments,
+            self.test_project_assignments,
+            self.test_project_activities,
+            self.test_project_tasks,
             self.test_dashboard_stats,
         ]
         
