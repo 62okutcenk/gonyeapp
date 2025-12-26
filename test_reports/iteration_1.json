@@ -1,12 +1,19 @@
 {
-  "summary": "Completed comprehensive testing of CraftForge multi-tenant SaaS application with new setup wizard, extended company info, phone formatting, dark mode, and Turkish Lira formatting features",
+  "summary": "Completed comprehensive testing of CraftForge multi-tenant SaaS application with new setup wizard, extended company info, phone formatting, dark mode, and Turkish Lira formatting features. Backend APIs working perfectly (100% pass rate). Frontend registration and setup wizard flow working correctly.",
   "backend_issues": {
     "critical_bugs": [],
     "flaky_endpoints": []
   },
   "frontend_issues": {
     "ui_bugs": [],
-    "integration_issues": [],
+    "integration_issues": [
+      {
+        "flow": "User login persistence",
+        "issue": "Login sessions may not persist properly between page reloads",
+        "affected_selectors": ["login form"],
+        "fix_priority": "LOW"
+      }
+    ],
     "design_issues": []
   },
   "passed_tests": [
