@@ -469,10 +469,13 @@ async def create_notification(user_id: str, tenant_id: str, title: str, message:
 # ==================== DEFAULT PERMISSIONS ====================
 
 DEFAULT_PERMISSIONS = [
-    {"key": "projects.view", "name": "Projeleri Görüntüle", "description": "Projeleri görüntüleme yetkisi"},
+    {"key": "projects.view", "name": "Projeleri Görüntüle", "description": "Atandığı projeleri görüntüleme yetkisi"},
+    {"key": "projects.view_all", "name": "Tüm Projeleri Görüntüle", "description": "Tüm projeleri görüntüleme yetkisi"},
     {"key": "projects.create", "name": "Proje Oluştur", "description": "Yeni proje oluşturma yetkisi"},
     {"key": "projects.edit", "name": "Proje Düzenle", "description": "Proje düzenleme yetkisi"},
     {"key": "projects.delete", "name": "Proje Sil", "description": "Proje silme yetkisi"},
+    {"key": "projects.assign_staff", "name": "Personel Ata", "description": "Projeye personel atama yetkisi"},
+    {"key": "projects.manage_finance", "name": "Finans Yönet", "description": "Proje finansı ve tahsilat yönetimi yetkisi"},
     {"key": "tasks.view", "name": "Görevleri Görüntüle", "description": "Görevleri görüntüleme yetkisi"},
     {"key": "tasks.edit", "name": "Görev Düzenle", "description": "Görev durumu güncelleme yetkisi"},
     {"key": "setup.groups", "name": "Grupları Yönet", "description": "Grup oluşturma ve düzenleme yetkisi"},
