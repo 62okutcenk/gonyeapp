@@ -47,7 +47,7 @@ const steps = [
 
 export default function SetupWizardPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -246,6 +246,7 @@ export default function SetupWizardPage() {
     // Mark setup as complete
     try {
       await axios.put(`${API_URL}/tenant`, { setup_completed: true });
+      await refreshUser(); // Refresh user to update setup_completed status
       toast.success("Kurulum tamamlandı!");
       navigate("/dashboard");
     } catch (error) {
