@@ -1149,7 +1149,9 @@ async def create_project_area_internal(
         "updated_at": now
     }
     
-    await db.project_areas.insert_one(area)
+    # Create a copy without _id for insertion
+    area_to_insert = {k: v for k, v in area.items() if k != "_id"}
+    await db.project_areas.insert_one(area_to_insert)
     
     # Log activity
     await log_project_activity(
