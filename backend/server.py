@@ -1047,7 +1047,9 @@ async def create_project(data: ProjectCreate, user: dict = Depends(get_current_u
         "updated_at": now
     }
     
-    await db.projects.insert_one(project)
+    # Create a copy without _id for insertion
+    project_to_insert = {k: v for k, v in project.items() if k != "_id"}
+    await db.projects.insert_one(project_to_insert)
     
     # Log activity
     await log_project_activity(
