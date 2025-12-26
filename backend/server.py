@@ -57,6 +57,7 @@ class UserResponse(BaseModel):
     role_id: Optional[str] = None
     color: str = "#4a4036"
     is_admin: bool = False
+    setup_completed: bool = False
     created_at: str
 
 class TokenResponse(BaseModel):
@@ -67,19 +68,43 @@ class TokenResponse(BaseModel):
 # Tenant Models
 class TenantCreate(BaseModel):
     name: str
+    city: Optional[str] = None
+    district: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    phone: Optional[str] = None
+    tax_office: Optional[str] = None
+    tax_number: Optional[str] = None
     light_logo_url: Optional[str] = None
     dark_logo_url: Optional[str] = None
+    setup_completed: bool = False
 
 class TenantUpdate(BaseModel):
     name: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    phone: Optional[str] = None
+    tax_office: Optional[str] = None
+    tax_number: Optional[str] = None
     light_logo_url: Optional[str] = None
     dark_logo_url: Optional[str] = None
+    setup_completed: Optional[bool] = None
 
 class TenantResponse(BaseModel):
     id: str
     name: str
+    city: Optional[str] = None
+    district: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    phone: Optional[str] = None
+    tax_office: Optional[str] = None
+    tax_number: Optional[str] = None
     light_logo_url: Optional[str] = None
     dark_logo_url: Optional[str] = None
+    setup_completed: bool = False
     created_at: str
 
 # Role & Permission Models
