@@ -557,6 +557,7 @@ async def get_me(user: dict = Depends(get_current_user)):
         role_id=user.get("role_id"),
         color=user.get("color", "#4a4036"),
         is_admin=user.get("is_admin", False),
+        setup_completed=setup_completed,
         created_at=user["created_at"]
     )
 
