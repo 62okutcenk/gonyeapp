@@ -531,7 +531,10 @@ export default function NewProjectPage() {
                                 )}
                                 onClick={() => toggleWorkItem(areaIndex, item.id, item.name)}
                               >
-                                <Checkbox checked={isSelected} />
+                                <Checkbox 
+                                  checked={isSelected} 
+                                  onCheckedChange={() => toggleWorkItem(areaIndex, item.id, item.name)}
+                                />
                                 <span className="text-sm">{item.name}</span>
                               </div>
                             );
