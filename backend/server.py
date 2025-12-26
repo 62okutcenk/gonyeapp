@@ -1515,7 +1515,9 @@ async def create_project_payment(project_id: str, data: ProjectPaymentCreate, us
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    await db.project_payments.insert_one(payment)
+    # Create a copy without _id for insertion
+    payment_to_insert = {k: v for k, v in payment.items() if k != "_id"}
+    await db.project_payments.insert_one(payment_to_insert)
     
     # Log activity
     await log_project_activity(
