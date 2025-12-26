@@ -218,7 +218,6 @@ export default function DashboardLayout() {
   const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [tenant, setTenant] = useState(null);
 
   useEffect(() => {
