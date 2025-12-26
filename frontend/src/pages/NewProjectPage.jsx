@@ -1,26 +1,36 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
 import {
   ArrowLeft,
-  Package,
-  Calendar as CalendarIcon,
-  Loader2,
   Plus,
-  Minus,
+  Trash2,
+  MapPin,
+  User,
+  Package,
+  Wallet,
+  Users,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+import { getCities, getDistricts } from "@/data/turkeyData";
+import { formatCurrency, formatPhoneNumber } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
@@ -28,20 +38,39 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 export default function NewProjectPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [workItemsLoading, setWorkItemsLoading] = useState(true);
   const [workItems, setWorkItems] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [expandedArea, setExpandedArea] = useState(0);
+
+  // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     customer_name: "",
     customer_phone: "",
-    customer_address: "",
-    due_date: null,
+    customer_email: "",
+    due_date: "",
   });
-  const [selectedWorkItems, setSelectedWorkItems] = useState({});
+
+  // Areas state
+  const [areas, setAreas] = useState([
+    {
+      name: "",
+      address: "",
+      city: "",
+      district: "",
+      work_items: [],
+      agreed_price: 0,
+      status: "planlandi",
+    },
+  ]);
+
+  // Assignments state
+  const [assignments, setAssignments] = useState([]);
 
   useEffect(() => {
     fetchWorkItems();
+    fetchUsers();
   }, []);
 
   const fetchWorkItems = async () => {
@@ -50,356 +79,590 @@ export default function NewProjectPage() {
       setWorkItems(response.data);
     } catch (error) {
       console.error("Failed to fetch work items:", error);
-      toast.error("İş kalemleri yüklenirken hata oluştu");
-    } finally {
-      setWorkItemsLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/users`);
+      setUsers(response.data);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    }
   };
 
-  const handleWorkItemToggle = (workItemId) => {
-    setSelectedWorkItems((prev) => {
-      if (prev[workItemId]) {
-        const { [workItemId]: _, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [workItemId]: { quantity: 1, notes: "" } };
-    });
+  const handleFormChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleWorkItemQuantity = (workItemId, delta) => {
-    setSelectedWorkItems((prev) => ({
+  const handlePhoneChange = (value) => {
+    const formatted = formatPhoneNumber(value);
+    setFormData((prev) => ({ ...prev, customer_phone: formatted }));
+  };
+
+  // Area handlers
+  const addArea = () => {
+    setAreas((prev) => [
       ...prev,
-      [workItemId]: {
-        ...prev[workItemId],
-        quantity: Math.max(1, (prev[workItemId]?.quantity || 1) + delta),
+      {
+        name: "",
+        address: "",
+        city: "",
+        district: "",
+        work_items: [],
+        agreed_price: 0,
+        status: "planlandi",
       },
-    }));
+    ]);
+    setExpandedArea(areas.length);
   };
 
-  const handleWorkItemNotes = (workItemId, notes) => {
-    setSelectedWorkItems((prev) => ({
+  const removeArea = (index) => {
+    if (areas.length <= 1) {
+      toast.error("En az bir çalışma alanı gereklidir");
+      return;
+    }
+    setAreas((prev) => prev.filter((_, i) => i !== index));
+    // Remove area-specific assignments
+    setAssignments((prev) => prev.filter((a) => a.areaIndex !== index));
+  };
+
+  const updateArea = (index, field, value) => {
+    setAreas((prev) =>
+      prev.map((area, i) => {
+        if (i === index) {
+          const updated = { ...area, [field]: value };
+          if (field === "city") {
+            updated.district = "";
+          }
+          return updated;
+        }
+        return area;
+      })
+    );
+  };
+
+  const toggleWorkItem = (areaIndex, workItemId, workItemName) => {
+    setAreas((prev) =>
+      prev.map((area, i) => {
+        if (i === areaIndex) {
+          const exists = area.work_items.some((wi) => wi.work_item_id === workItemId);
+          if (exists) {
+            return {
+              ...area,
+              work_items: area.work_items.filter((wi) => wi.work_item_id !== workItemId),
+            };
+          } else {
+            return {
+              ...area,
+              work_items: [
+                ...area.work_items,
+                { work_item_id: workItemId, work_item_name: workItemName, quantity: 1 },
+              ],
+            };
+          }
+        }
+        return area;
+      })
+    );
+  };
+
+  // Assignment handlers
+  const addAssignment = (userId, type, areaIndex = null) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+
+    // Check if already assigned
+    const exists = assignments.some(
+      (a) =>
+        a.user_id === userId &&
+        a.assignment_type === type &&
+        (type === "project" || a.areaIndex === areaIndex)
+    );
+
+    if (exists) {
+      toast.error("Bu personel zaten atanmış");
+      return;
+    }
+
+    setAssignments((prev) => [
       ...prev,
-      [workItemId]: {
-        ...prev[workItemId],
-        notes,
+      {
+        user_id: userId,
+        user_name: user.full_name,
+        assignment_type: type,
+        areaIndex: areaIndex,
       },
-    }));
+    ]);
+  };
+
+  const removeAssignment = (index) => {
+    setAssignments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validation
     if (!formData.name.trim()) {
       toast.error("Proje adı gereklidir");
       return;
     }
-
-    if (Object.keys(selectedWorkItems).length === 0) {
-      toast.error("En az bir iş kalemi seçmelisiniz");
+    if (!formData.customer_name.trim()) {
+      toast.error("Müşteri adı gereklidir");
       return;
+    }
+
+    // Validate areas
+    for (let i = 0; i < areas.length; i++) {
+      if (!areas[i].name.trim()) {
+        toast.error(`Alan ${i + 1} için isim gereklidir`);
+        return;
+      }
+      if (areas[i].work_items.length === 0) {
+        toast.error(`"${areas[i].name}" alanı için en az bir iş kalemi seçmelisiniz`);
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      const workItemsData = Object.entries(selectedWorkItems).map(([id, data]) => ({
-        work_item_id: id,
-        quantity: data.quantity,
-        notes: data.notes || null,
+      // Prepare assignments with area_id placeholder (will be filled after area creation)
+      const projectAssignments = assignments.map((a) => ({
+        user_id: a.user_id,
+        assignment_type: a.assignment_type,
+        area_id: null, // Will be handled by backend or in a second request
+        _areaIndex: a.areaIndex, // For mapping
       }));
 
-      const response = await axios.post(`${API_URL}/projects`, {
+      const payload = {
         ...formData,
-        due_date: formData.due_date?.toISOString() || null,
-        work_items: workItemsData,
-      });
+        areas: areas,
+        assigned_users: projectAssignments.filter((a) => a.assignment_type === "project"),
+      };
+
+      const response = await axios.post(`${API_URL}/projects`, payload);
+      const project = response.data;
+
+      // Assign area-specific users
+      const areaAssignments = assignments.filter((a) => a.assignment_type === "area");
+      for (const assignment of areaAssignments) {
+        if (assignment.areaIndex !== null && project.areas[assignment.areaIndex]) {
+          try {
+            await axios.post(`${API_URL}/projects/${project.id}/assignments`, {
+              user_id: assignment.user_id,
+              assignment_type: "area",
+              area_id: project.areas[assignment.areaIndex].id,
+            });
+          } catch (error) {
+            console.error("Failed to assign user to area:", error);
+          }
+        }
+      }
 
       toast.success("Proje başarıyla oluşturuldu");
-      navigate(`/projects/${response.data.id}`);
+      navigate(`/projects/${project.id}`);
     } catch (error) {
-      const message = error.response?.data?.detail || "Proje oluşturulurken hata oluştu";
-      toast.error(message);
+      console.error("Failed to create project:", error);
+      toast.error(error.response?.data?.detail || "Proje oluşturulurken hata oluştu");
     } finally {
       setLoading(false);
     }
   };
 
+  const totalAgreed = areas.reduce((sum, area) => sum + (parseFloat(area.agreed_price) || 0), 0);
+
   return (
-    <div className="space-y-6 animate-slide-in" data-testid="new-project-page">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/projects")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Yeni Proje</h1>
-          <p className="text-muted-foreground">
-            Yeni bir proje oluşturun ve iş kalemlerini seçin
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Yeni Proje</h1>
+          <p className="text-muted-foreground">Proje ve çalışma alanlarını tanımlayın</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Project Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Proje Bilgileri</CardTitle>
-              <CardDescription>
-                Projenin temel bilgilerini girin
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Proje Bilgileri</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="name">Proje Adı *</Label>
                 <Input
                   id="name"
-                  name="name"
-                  placeholder="Örn: Yılmaz Evi Mutfak Projesi"
                   value={formData.name}
-                  onChange={handleChange}
-                  required
-                  data-testid="project-name-input"
+                  onChange={(e) => handleFormChange("name", e.target.value)}
+                  placeholder="Örn: Ahmet Bey Mutfak & Gardrop"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="description">Açıklama</Label>
                 <Textarea
                   id="description"
-                  name="description"
-                  placeholder="Proje hakkında detaylı bilgi..."
                   value={formData.description}
-                  onChange={handleChange}
-                  rows={3}
-                  data-testid="project-description-input"
+                  onChange={(e) => handleFormChange("description", e.target.value)}
+                  placeholder="Proje hakkında notlar..."
+                  rows={2}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Teslim Tarihi</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formData.due_date && "text-muted-foreground"
-                      )}
-                      data-testid="due-date-button"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.due_date
-                        ? format(formData.due_date, "d MMMM yyyy", { locale: tr })
-                        : "Tarih seçin"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formData.due_date}
-                      onSelect={(date) =>
-                        setFormData((prev) => ({ ...prev, due_date: date }))
-                      }
-                      locale={tr}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Customer Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Müşteri Bilgileri</CardTitle>
-              <CardDescription>
-                Müşteri iletişim bilgilerini girin (opsiyonel)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* Customer Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Müşteri Bilgileri
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="customer_name">Müşteri Adı</Label>
+                <Label htmlFor="customer_name">Müşteri Adı *</Label>
                 <Input
                   id="customer_name"
-                  name="customer_name"
-                  placeholder="Örn: Ahmet Yılmaz"
                   value={formData.customer_name}
-                  onChange={handleChange}
-                  data-testid="customer-name-input"
+                  onChange={(e) => handleFormChange("customer_name", e.target.value)}
+                  placeholder="Örn: Ahmet Yılmaz"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_phone">Telefon</Label>
                 <Input
                   id="customer_phone"
-                  name="customer_phone"
-                  placeholder="Örn: 0532 123 45 67"
                   value={formData.customer_phone}
-                  onChange={handleChange}
-                  data-testid="customer-phone-input"
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  placeholder="0 (xxx) xxx xx xx"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="customer_address">Adres</Label>
-                <Textarea
-                  id="customer_address"
-                  name="customer_address"
-                  placeholder="Teslimat adresi..."
-                  value={formData.customer_address}
-                  onChange={handleChange}
-                  rows={3}
-                  data-testid="customer-address-input"
+                <Label htmlFor="customer_email">E-posta</Label>
+                <Input
+                  id="customer_email"
+                  type="email"
+                  value={formData.customer_email}
+                  onChange={(e) => handleFormChange("customer_email", e.target.value)}
+                  placeholder="musteri@email.com"
                 />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="due_date">Termin Tarihi</Label>
+                <Input
+                  id="due_date"
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => handleFormChange("due_date", e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Work Items Selection */}
-        <Card className="mt-6">
+        {/* Areas */}
+        <Card>
           <CardHeader>
-            <CardTitle>İş Kalemleri *</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Çalışma Alanları
+              </CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={addArea}>
+                <Plus className="mr-2 h-4 w-4" />
+                Alan Ekle
+              </Button>
+            </div>
             <CardDescription>
-              Projede yapılacak iş kalemlerini seçin. Seçilen her iş kalemi için otomatik olarak görevler oluşturulacaktır.
+              Farklı adres veya iş türleri için ayrı alanlar oluşturun
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {workItemsLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-24 rounded-lg" />
-                ))}
-              </div>
-            ) : workItems.length === 0 ? (
-              <div className="text-center py-8">
-                <Package className="h-12 w-12 text-muted-foreground/50 mx-auto" />
-                <p className="mt-4 text-sm text-muted-foreground">
-                  Henüz iş kalemi tanımlanmamış
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => navigate("/setup/workitems")}
+          <CardContent className="space-y-4">
+            {areas.map((area, areaIndex) => (
+              <div
+                key={areaIndex}
+                className="border rounded-lg overflow-hidden"
+              >
+                {/* Area Header */}
+                <div
+                  className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer"
+                  onClick={() => setExpandedArea(expandedArea === areaIndex ? -1 : areaIndex)}
                 >
-                  İş Kalemi Ekle
-                </Button>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {workItems.map((item) => {
-                  const isSelected = !!selectedWorkItems[item.id];
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "relative rounded-lg border p-4 transition-all cursor-pointer",
-                        isSelected
-                          ? "border-primary bg-primary/5 ring-1 ring-primary"
-                          : "hover:border-primary/50"
-                      )}
-                      onClick={() => handleWorkItemToggle(item.id)}
-                      data-testid={`work-item-${item.id}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => handleWorkItemToggle(item.id)}
-                          className="mt-0.5"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-primary shrink-0" />
-                            <p className="font-medium truncate">{item.name}</p>
-                          </div>
-                          {item.description && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {item.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium">
+                      {area.name || `Alan ${areaIndex + 1}`}
+                    </span>
+                    {area.work_items.length > 0 && (
+                      <Badge variant="secondary">
+                        {area.work_items.length} iş kalemi
+                      </Badge>
+                    )}
+                    {area.agreed_price > 0 && (
+                      <Badge variant="outline">
+                        {formatCurrency(area.agreed_price)}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {areas.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeArea(areaIndex);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {expandedArea === areaIndex ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
 
-                      {isSelected && (
-                        <div
-                          className="mt-4 pt-4 border-t space-y-3"
-                          onClick={(e) => e.stopPropagation()}
+                {/* Area Content */}
+                {expandedArea === areaIndex && (
+                  <div className="p-4 space-y-4 border-t">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Alan Adı *</Label>
+                        <Input
+                          value={area.name}
+                          onChange={(e) => updateArea(areaIndex, "name", e.target.value)}
+                          placeholder="Örn: Mutfak, Gardrop, Yatak Odası"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Anlaşma Bedeli (₺)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={area.agreed_price || ""}
+                          onChange={(e) => updateArea(areaIndex, "agreed_price", parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>İl</Label>
+                        <Select
+                          value={area.city}
+                          onValueChange={(value) => updateArea(areaIndex, "city", value)}
                         >
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs">Adet:</Label>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleWorkItemQuantity(item.id, -1)}
+                          <SelectTrigger>
+                            <SelectValue placeholder="İl seçin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getCities().map((city) => (
+                              <SelectItem key={city} value={city}>
+                                {city}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>İlçe</Label>
+                        <Select
+                          value={area.district}
+                          onValueChange={(value) => updateArea(areaIndex, "district", value)}
+                          disabled={!area.city}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="İlçe seçin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getDistricts(area.city).map((district) => (
+                              <SelectItem key={district} value={district}>
+                                {district}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label>Açık Adres</Label>
+                        <Textarea
+                          value={area.address}
+                          onChange={(e) => updateArea(areaIndex, "address", e.target.value)}
+                          placeholder="Mahalle, Sokak, Bina No..."
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Work Items */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        İş Kalemleri
+                      </Label>
+                      {workItems.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          Henüz iş kalemi tanımlanmamış. Kurulum bölümünden ekleyebilirsiniz.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {workItems.map((item) => {
+                            const isSelected = area.work_items.some(
+                              (wi) => wi.work_item_id === item.id
+                            );
+                            return (
+                              <div
+                                key={item.id}
+                                className={cn(
+                                  "flex items-center space-x-2 p-2 rounded-md border cursor-pointer transition-colors",
+                                  isSelected
+                                    ? "bg-primary/10 border-primary"
+                                    : "hover:bg-muted"
+                                )}
+                                onClick={() => toggleWorkItem(areaIndex, item.id, item.name)}
                               >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-8 text-center font-medium">
-                                {selectedWorkItems[item.id]?.quantity || 1}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleWorkItemQuantity(item.id, 1)}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <Input
-                              placeholder="Not ekle..."
-                              className="h-8 text-xs"
-                              value={selectedWorkItems[item.id]?.notes || ""}
-                              onChange={(e) => handleWorkItemNotes(item.id, e.target.value)}
-                            />
-                          </div>
+                                <Checkbox checked={isSelected} />
+                                <span className="text-sm">{item.name}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Total */}
+            {totalAgreed > 0 && (
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <span className="font-medium">Toplam Anlaşma Bedeli:</span>
+                <span className="text-lg font-bold">{formatCurrency(totalAgreed)}</span>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Submit */}
-        <div className="flex items-center justify-end gap-4 mt-6">
+        {/* Staff Assignments */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Personel Atama
+            </CardTitle>
+            <CardDescription>
+              Projeye veya belirli alanlara personel atayın
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Project-level assignment */}
+            <div className="space-y-2">
+              <Label>Tüm Projeye Erişim</Label>
+              <div className="flex gap-2">
+                <Select onValueChange={(value) => addAssignment(value, "project")}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Personel seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Area-level assignments */}
+            {areas.length > 0 && areas[0].name && (
+              <div className="space-y-2">
+                <Label>Belirli Alana Erişim</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {areas.map((area, idx) =>
+                    area.name ? (
+                      <div key={idx} className="flex gap-2">
+                        <Select
+                          onValueChange={(value) => addAssignment(value, "area", idx)}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder={`${area.name} için personel`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {users.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Assignment List */}
+            {assignments.length > 0 && (
+              <div className="space-y-2">
+                <Label>Atanan Personeller</Label>
+                <div className="flex flex-wrap gap-2">
+                  {assignments.map((a, idx) => (
+                    <Badge
+                      key={idx}
+                      variant="secondary"
+                      className="flex items-center gap-1 py-1.5"
+                    >
+                      {a.user_name}
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({a.assignment_type === "project"
+                          ? "Tüm Proje"
+                          : areas[a.areaIndex]?.name || "Alan"})
+                      </span>
+                      <button
+                        type="button"
+                        className="ml-1 hover:text-destructive"
+                        onClick={() => removeAssignment(idx)}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-4">
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/projects")}
           >
             İptal
           </Button>
-          <Button
-            type="submit"
-            disabled={loading || Object.keys(selectedWorkItems).length === 0}
-            data-testid="create-project-button"
-          >
+          <Button type="submit" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Oluşturuluyor...
               </>
             ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Proje Oluştur
-              </>
+              "Proje Oluştur"
             )}
           </Button>
         </div>
