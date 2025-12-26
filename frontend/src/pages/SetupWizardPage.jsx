@@ -169,7 +169,8 @@ export default function SetupWizardPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       
-      const logoUrl = `${API_URL}/files/${response.data.id}`;
+      // Use public endpoint for logo URL (no auth required for display)
+      const logoUrl = `${API_URL}/public/files/${response.data.id}`;
       setLogos((prev) => ({
         ...prev,
         [type === "light" ? "light_logo_url" : "dark_logo_url"]: logoUrl,
