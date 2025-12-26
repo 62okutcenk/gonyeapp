@@ -1195,7 +1195,9 @@ async def create_project_assignment_internal(
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    await db.project_assignments.insert_one(assignment)
+    # Create a copy without _id for insertion
+    assignment_to_insert = {k: v for k, v in assignment.items() if k != "_id"}
+    await db.project_assignments.insert_one(assignment_to_insert)
     
     # Get project name for notification
     project = await db.projects.find_one({"id": project_id}, {"name": 1, "_id": 0})
