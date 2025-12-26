@@ -2,10 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Pages
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
+import SetupWizardPage from "@/pages/SetupWizardPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import ProjectDetailPage from "@/pages/ProjectDetailPage";
@@ -35,6 +37,35 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
+  // Redirect to setup wizard if setup not completed and user is admin
+  if (!user.setup_completed && user.is_admin) {
+    return <Navigate to="/setup-wizard" replace />;
+  }
+  
+  return children;
+};
+
+// Setup Wizard Route - only for admins who haven't completed setup
+const SetupWizardRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Yükleniyor...</div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // If setup is already completed, redirect to dashboard
+  if (user.setup_completed) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
   return children;
 };
 
@@ -51,6 +82,10 @@ const PublicRoute = ({ children }) => {
   }
   
   if (user) {
+    // Check if setup is completed
+    if (!user.setup_completed && user.is_admin) {
+      return <Navigate to="/setup-wizard" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
   
@@ -63,6 +98,9 @@ function AppRoutes() {
       {/* Public Routes */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      
+      {/* Setup Wizard */}
+      <Route path="/setup-wizard" element={<SetupWizardRoute><SetupWizardPage /></SetupWizardRoute>} />
       
       {/* Protected Routes */}
       <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
@@ -87,12 +125,14 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <NotificationProvider>
-          <AppRoutes />
-          <Toaster position="top-right" richColors />
-        </NotificationProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <AppRoutes />
+            <Toaster position="top-right" richColors />
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
