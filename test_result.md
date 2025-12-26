@@ -191,9 +191,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Setup wizard work item quick-add fix"
-    - "Sidebar logo with avatar fallback"
-    - "Notification dropdown menu"
+    - "Proje oluşturma (alanlar ve finans ile)"
+    - "Proje detay sayfası tab yapısı"
+    - "Proje personel atama ve yetkilendirme"
+    - "Proje tahsilat yönetimi"
+    - "Proje aktivite logları"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -201,12 +203,23 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      Düzeltilen hatalar:
-      1. SetupWizardPage.jsx - handleAddWorkItem fonksiyonu artık doğrudan iş kalemi adını parametre olarak alıyor
-      2. DashboardLayout.jsx - Logo yoksa firma adının baş harflerini gösteren avatar eklendi
-      3. DashboardLayout.jsx - Bildirimler Popover ile dropdown menü olarak açılıyor
+      BÜYÜK REFAKTÖR TAMAMLANDI - Proje Modülü Yenilendi:
+      
+      Backend değişiklikleri (/app/backend/server.py):
+      - Yeni modeller: ProjectArea, ProjectAssignment, ProjectPayment, ProjectActivity
+      - Yeni yetkiler: projects.view_all, projects.assign_staff, projects.manage_finance
+      - API endpoint'leri: /projects, /projects/{id}/areas, /projects/{id}/assignments, /projects/{id}/payments, /projects/{id}/activities
+      - Proje erişim kontrolü: can_access_project() helper
+      - Aktivite loglama: log_project_activity() helper
+      
+      Frontend değişiklikleri:
+      - ProjectsPage.jsx: Yeni kart tasarımı (alanlar, finans özeti, ilerleme)
+      - NewProjectPage.jsx: Çalışma alanları, iş kalemleri, personel atama
+      - ProjectDetailPage.jsx: Tab yapısı (Genel, Alanlar, Finans, Ekip, Aktiviteler)
       
       Test edilmesi gereken akışlar:
-      - Yeni kullanıcı kaydı -> Kurulum sihirbazı -> İş kalemi hızlı ekleme butonları
-      - Dashboard sidebar'da logo/avatar görünümü
-      - Header'daki bildirim ikonuna tıklama -> Dropdown menü açılması
+      1. Kayıt -> Kurulum -> Proje oluştur (alanlar, iş kalemleri, fiyat)
+      2. Proje detay sayfasında tab'lar arası geçiş
+      3. Tahsilat ekleme/silme
+      4. Personel atama (proje/alan bazlı)
+      5. Aktivite loglarının görüntülenmesi
