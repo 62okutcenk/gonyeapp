@@ -184,14 +184,19 @@ export default function SetupWizardPage() {
     }
   };
 
-  const handleAddWorkItem = async () => {
-    if (!newWorkItem.name.trim()) {
+  const handleAddWorkItem = async (itemName = null) => {
+    const nameToAdd = itemName || newWorkItem.name;
+    
+    if (!nameToAdd.trim()) {
       toast.error("İş kalemi adı gereklidir");
       return;
     }
 
     try {
-      const response = await axios.post(`${API_URL}/workitems`, newWorkItem);
+      const response = await axios.post(`${API_URL}/workitems`, { 
+        name: nameToAdd, 
+        description: "" 
+      });
       setWorkItems((prev) => [...prev, response.data]);
       setNewWorkItem({ name: "", description: "" });
       toast.success("İş kalemi eklendi");
@@ -634,10 +639,8 @@ export default function SetupWizardPage() {
                         key={name}
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setNewWorkItem({ name, description: "" });
-                          handleAddWorkItem();
-                        }}
+                        onClick={() => handleAddWorkItem(name)}
+                        data-testid={`quick-add-${name.replace(/\s+/g, '-').toLowerCase()}`}
                       >
                         + {name}
                       </Button>
