@@ -533,7 +533,7 @@ export default function NewProjectPage() {
                               >
                                 <Checkbox 
                                   checked={isSelected} 
-                                  onCheckedChange={() => toggleWorkItem(areaIndex, item.id, item.name)}
+                                  className="pointer-events-none"
                                 />
                                 <span className="text-sm">{item.name}</span>
                               </div>
