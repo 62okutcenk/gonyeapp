@@ -1676,7 +1676,6 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
         {"id": project_id},
         {"$set": {"status": new_project_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    )
     
     return {"message": "Görev güncellendi"}
 
