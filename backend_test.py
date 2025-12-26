@@ -331,6 +331,309 @@ class CraftForgeAPITester:
         
         return success
 
+    def test_project_with_areas(self):
+        """Test new project creation with multiple areas"""
+        print("\n🔍 Testing Project with Areas (NEW FEATURE)...")
+        
+        # First ensure we have work items
+        success, work_items = self.run_test(
+            "Get Work Items for Project",
+            "GET",
+            "workitems",
+            200
+        )
+        
+        if not success or not work_items:
+            # Create test work items
+            for item_name in ["Mutfak Dolabı", "Gardrop"]:
+                self.run_test(
+                    f"Create Work Item: {item_name}",
+                    "POST",
+                    "workitems",
+                    200,
+                    data={
+                        "name": item_name,
+                        "description": f"Test {item_name} açıklaması",
+                        "default_subtask_ids": []
+                    }
+                )
+            
+            # Get work items again
+            success, work_items = self.run_test(
+                "Get Work Items After Creation",
+                "GET",
+                "workitems",
+                200
+            )
+        
+        if success and work_items and len(work_items) >= 2:
+            # Create project with multiple areas
+            project_data = {
+                "name": "Test Proje - Mutfak ve Gardrop",
+                "description": "Test projesi açıklaması",
+                "customer_name": "Ahmet Yılmaz",
+                "customer_phone": "0 (555) 123 45 67",
+                "customer_email": "ahmet@example.com",
+                "due_date": "2024-12-31",
+                "areas": [
+                    {
+                        "name": "Mutfak",
+                        "address": "Mutfak adresi",
+                        "city": "İstanbul",
+                        "district": "Kadıköy",
+                        "work_items": [
+                            {
+                                "work_item_id": work_items[0]["id"],
+                                "work_item_name": work_items[0]["name"],
+                                "quantity": 1,
+                                "notes": "Mutfak için özel not"
+                            }
+                        ],
+                        "agreed_price": 15000.0,
+                        "status": "planlandi"
+                    },
+                    {
+                        "name": "Gardrop",
+                        "address": "Yatak odası",
+                        "city": "İstanbul", 
+                        "district": "Kadıköy",
+                        "work_items": [
+                            {
+                                "work_item_id": work_items[1]["id"] if len(work_items) > 1 else work_items[0]["id"],
+                                "work_item_name": work_items[1]["name"] if len(work_items) > 1 else work_items[0]["name"],
+                                "quantity": 2,
+                                "notes": "Gardrop için özel not"
+                            }
+                        ],
+                        "agreed_price": 25000.0,
+                        "status": "planlandi"
+                    }
+                ],
+                "assigned_users": []
+            }
+            
+            success, project = self.run_test(
+                "Create Project with Multiple Areas",
+                "POST",
+                "projects",
+                200,
+                data=project_data
+            )
+            
+            if success and project:
+                project_id = project["id"]
+                self.project_id = project_id  # Store for other tests
+                
+                # Verify project structure
+                if "areas" in project and len(project["areas"]) == 2:
+                    self.log_test("Project Areas Created", True, f"Created {len(project['areas'])} areas")
+                    
+                    # Verify finance calculation
+                    expected_total = 40000.0  # 15000 + 25000
+                    actual_total = project.get("finance", {}).get("total_agreed", 0)
+                    if abs(actual_total - expected_total) < 0.01:
+                        self.log_test("Project Finance Calculation", True, f"Total: {actual_total}")
+                    else:
+                        self.log_test("Project Finance Calculation", False, "", f"Expected {expected_total}, got {actual_total}")
+                else:
+                    self.log_test("Project Areas Created", False, "", "Areas not created properly")
+                
+                return True
+        
+        self.log_test("Project with Areas Test", False, "", "Insufficient work items or creation failed")
+        return False
+
+    def test_project_payments(self):
+        """Test project payment functionality"""
+        print("\n🔍 Testing Project Payments...")
+        
+        if not hasattr(self, 'project_id'):
+            self.log_test("Project Payments Test", False, "", "No project available for testing")
+            return False
+        
+        # Get project details to get area IDs
+        success, project = self.run_test(
+            "Get Project for Payment Test",
+            "GET",
+            f"projects/{self.project_id}",
+            200
+        )
+        
+        if success and project.get("areas"):
+            area_id = project["areas"][0]["id"]
+            
+            # Add payment
+            payment_data = {
+                "area_id": area_id,
+                "amount": 5000.0,
+                "payment_date": "2024-01-15",
+                "payment_method": "nakit",
+                "notes": "İlk tahsilat"
+            }
+            
+            success, payment = self.run_test(
+                "Add Project Payment",
+                "POST",
+                f"projects/{self.project_id}/payments",
+                200,
+                data=payment_data
+            )
+            
+            if success:
+                # Get payments list
+                success, payments = self.run_test(
+                    "Get Project Payments",
+                    "GET",
+                    f"projects/{self.project_id}/payments",
+                    200
+                )
+                
+                if success and payments and len(payments) > 0:
+                    self.log_test("Project Payments List", True, f"Found {len(payments)} payments")
+                    
+                    # Test payment deletion
+                    payment_id = payments[0]["id"]
+                    success, _ = self.run_test(
+                        "Delete Project Payment",
+                        "DELETE",
+                        f"projects/{self.project_id}/payments/{payment_id}",
+                        200
+                    )
+                    
+                    if success:
+                        self.log_test("Delete Project Payment", True, "Payment deleted successfully")
+                    
+                    return True
+        
+        return False
+
+    def test_project_assignments(self):
+        """Test project staff assignment functionality"""
+        print("\n🔍 Testing Project Assignments...")
+        
+        if not hasattr(self, 'project_id'):
+            self.log_test("Project Assignments Test", False, "", "No project available for testing")
+            return False
+        
+        # Get users for assignment
+        success, users = self.run_test(
+            "Get Users for Assignment",
+            "GET",
+            "users",
+            200
+        )
+        
+        if success and users and len(users) > 0:
+            user_id = users[0]["id"]
+            
+            # Test project-level assignment
+            assignment_data = {
+                "user_id": user_id,
+                "assignment_type": "project",
+                "area_id": None
+            }
+            
+            success, assignment = self.run_test(
+                "Create Project Assignment",
+                "POST",
+                f"projects/{self.project_id}/assignments",
+                200,
+                data=assignment_data
+            )
+            
+            if success:
+                assignment_id = assignment["id"]
+                
+                # Test assignment deletion
+                success, _ = self.run_test(
+                    "Delete Project Assignment",
+                    "DELETE",
+                    f"projects/{self.project_id}/assignments/{assignment_id}",
+                    200
+                )
+                
+                if success:
+                    self.log_test("Project Assignment CRUD", True, "Assignment created and deleted successfully")
+                    return True
+        
+        return False
+
+    def test_project_activities(self):
+        """Test project activity logs"""
+        print("\n🔍 Testing Project Activities...")
+        
+        if not hasattr(self, 'project_id'):
+            self.log_test("Project Activities Test", False, "", "No project available for testing")
+            return False
+        
+        success, activities = self.run_test(
+            "Get Project Activities",
+            "GET",
+            f"projects/{self.project_id}/activities",
+            200
+        )
+        
+        if success and isinstance(activities, list):
+            self.log_test("Project Activities", True, f"Found {len(activities)} activities")
+            
+            # Verify activity structure
+            if activities:
+                activity = activities[0]
+                expected_fields = ["id", "project_id", "user_id", "user_name", "action", "description", "created_at"]
+                all_fields_present = all(field in activity for field in expected_fields)
+                
+                if all_fields_present:
+                    self.log_test("Activity Structure", True, "All expected fields present")
+                else:
+                    missing_fields = [f for f in expected_fields if f not in activity]
+                    self.log_test("Activity Structure", False, "", f"Missing fields: {missing_fields}")
+            
+            return True
+        
+        return False
+
+    def test_project_tasks(self):
+        """Test project tasks functionality"""
+        print("\n🔍 Testing Project Tasks...")
+        
+        if not hasattr(self, 'project_id'):
+            self.log_test("Project Tasks Test", False, "", "No project available for testing")
+            return False
+        
+        success, tasks = self.run_test(
+            "Get Project Tasks",
+            "GET",
+            f"projects/{self.project_id}/tasks",
+            200
+        )
+        
+        if success and isinstance(tasks, list):
+            self.log_test("Project Tasks", True, f"Found {len(tasks)} tasks")
+            
+            # Test task update if tasks exist
+            if tasks:
+                task_id = tasks[0]["id"]
+                update_data = {
+                    "status": "uretimde",
+                    "notes": "Test güncelleme",
+                    "assigned_to": None
+                }
+                
+                success, _ = self.run_test(
+                    "Update Project Task",
+                    "PUT",
+                    f"projects/{self.project_id}/tasks/{task_id}",
+                    200,
+                    data=update_data
+                )
+                
+                if success:
+                    self.log_test("Project Task Update", True, "Task updated successfully")
+            
+            return True
+        
+        return False
+
     def test_dashboard_stats(self):
         """Test dashboard statistics endpoint"""
         print("\n🔍 Testing Dashboard Stats...")
