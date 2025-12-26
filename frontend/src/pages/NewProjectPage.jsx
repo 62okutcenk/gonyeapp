@@ -520,22 +520,34 @@ export default function NewProjectPage() {
                             const isSelected = area.work_items.some(
                               (wi) => wi.work_item_id === item.id
                             );
+                            const checkboxId = `wi-${areaIndex}-${item.id}`;
+                            
+                            // DÜZELTME BURADA YAPILDI:
+                            // 1. Div'den onClick kaldırıldı.
+                            // 2. Checkbox'tan pointer-events-none kaldırıldı.
+                            // 3. onCheckedChange eklendi.
+                            // 4. Label htmlFor eklendi.
                             return (
                               <div
                                 key={item.id}
                                 className={cn(
-                                  "flex items-center space-x-2 p-2 rounded-md border cursor-pointer transition-colors",
+                                  "flex items-center space-x-2 p-2 rounded-md border transition-colors",
                                   isSelected
                                     ? "bg-primary/10 border-primary"
                                     : "hover:bg-muted"
                                 )}
-                                onClick={() => toggleWorkItem(areaIndex, item.id, item.name)}
                               >
                                 <Checkbox 
+                                  id={checkboxId}
                                   checked={isSelected} 
-                                  className="pointer-events-none"
+                                  onCheckedChange={() => toggleWorkItem(areaIndex, item.id, item.name)}
                                 />
-                                <span className="text-sm">{item.name}</span>
+                                <Label 
+                                  htmlFor={checkboxId}
+                                  className="text-sm font-normal cursor-pointer flex-1"
+                                >
+                                  {item.name}
+                                </Label>
                               </div>
                             );
                           })}

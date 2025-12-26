@@ -98,7 +98,11 @@ const activityIcons = {
 };
 
 export default function ProjectDetailPage() {
-  const { projectId } = useParams();
+  // DÜZELTME BURADA YAPILDI:
+  // App.js'de yol ":id" olarak tanımlı olduğu için useParams'dan "id" geliyor.
+  // Kodun geri kalanında "projectId" kullandığın için "id"yi "projectId" değişkenine atıyoruz (aliasing).
+  const { id: projectId } = useParams();
+  
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
@@ -129,11 +133,14 @@ export default function ProjectDetailPage() {
   });
 
   useEffect(() => {
-    fetchProject();
-    fetchActivities();
-    fetchPayments();
-    fetchTasks();
-    fetchUsers();
+    // projectId (id) varsa verileri çek
+    if (projectId) {
+      fetchProject();
+      fetchActivities();
+      fetchPayments();
+      fetchTasks();
+      fetchUsers();
+    }
   }, [projectId]);
 
   const fetchProject = async () => {
