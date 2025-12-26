@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -35,9 +37,12 @@ import {
   LogOut,
   ChevronDown,
   Check,
-  X,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
 const navigation = [
   { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
@@ -70,18 +75,35 @@ const NavItem = ({ item, onClick }) => (
   </NavLink>
 );
 
-const Sidebar = ({ onNavClick }) => {
+const Sidebar = ({ onNavClick, tenant, isDark }) => {
   const [setupOpen, setSetupOpen] = useState(true);
+
+  // Determine which logo to show
+  const logoUrl = isDark ? tenant?.dark_logo_url : tenant?.light_logo_url;
+  const fallbackLogo = isDark ? tenant?.light_logo_url : tenant?.dark_logo_url;
+  const displayLogo = logoUrl || fallbackLogo;
 
   return (
     <div className="flex h-full flex-col gap-2">
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Package className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-lg tracking-tight">CraftForge</span>
+          {displayLogo ? (
+            <img 
+              src={displayLogo} 
+              alt={tenant?.name || "Logo"} 
+              className="h-8 max-w-[150px] object-contain"
+            />
+          ) : (
+            <>
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                <Package className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="font-bold text-lg tracking-tight">
+                {tenant?.name || "CraftForge"}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -125,13 +147,6 @@ const Sidebar = ({ onNavClick }) => {
 };
 
 const NotificationItem = ({ notification, onMarkRead }) => {
-  const typeStyles = {
-    info: "bg-blue-100 text-blue-700",
-    success: "bg-green-100 text-green-700",
-    warning: "bg-yellow-100 text-yellow-700",
-    error: "bg-red-100 text-red-700",
-  };
-
   return (
     <div
       className={cn(
@@ -167,9 +182,24 @@ const NotificationItem = ({ notification, onMarkRead }) => {
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [tenant, setTenant] = useState(null);
+
+  useEffect(() => {
+    fetchTenant();
+  }, []);
+
+  const fetchTenant = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/tenant`);
+      setTenant(response.data);
+    } catch (error) {
+      console.error("Failed to fetch tenant:", error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -189,7 +219,7 @@ export default function DashboardLayout() {
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 border-r bg-background lg:block">
-        <Sidebar />
+        <Sidebar tenant={tenant} isDark={isDark} />
       </aside>
 
       {/* Mobile Header */}
@@ -201,11 +231,16 @@ export default function DashboardLayout() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
-            <Sidebar onNavClick={() => setMobileMenuOpen(false)} />
+            <Sidebar onNavClick={() => setMobileMenuOpen(false)} tenant={tenant} isDark={isDark} />
           </SheetContent>
         </Sheet>
 
         <div className="flex-1" />
+
+        {/* Theme Toggle - Mobile */}
+        <Button variant="ghost" size="icon" onClick={toggleTheme}>
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button>
 
         {/* Mobile Notifications & Profile */}
         <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
@@ -285,6 +320,16 @@ export default function DashboardLayout() {
           <div />
 
           <div className="flex items-center gap-4">
+            {/* Theme Toggle */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleTheme}
+              data-testid="theme-toggle-button"
+            >
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+
             {/* Notifications */}
             <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
               <SheetTrigger asChild>
