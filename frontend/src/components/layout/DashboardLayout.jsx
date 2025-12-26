@@ -274,9 +274,9 @@ export default function DashboardLayout() {
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
 
-        {/* Mobile Notifications & Profile */}
-        <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-          <SheetTrigger asChild>
+        {/* Mobile Notifications - Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -288,38 +288,49 @@ export default function DashboardLayout() {
                 </Badge>
               )}
             </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-80 p-0">
-            <SheetHeader className="p-4 border-b">
-              <div className="flex items-center justify-between">
-                <SheetTitle>Bildirimler</SheetTitle>
-                {unreadCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={markAllAsRead}>
-                    Tümünü Okundu İşaretle
-                  </Button>
-                )}
-              </div>
-            </SheetHeader>
-            <ScrollArea className="h-[calc(100vh-80px)]">
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-0" align="end">
+            <div className="flex items-center justify-between p-3 border-b">
+              <h4 className="font-semibold text-sm">Bildirimler</h4>
+              {unreadCount > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={markAllAsRead}
+                >
+                  Tümünü Oku
+                </Button>
+              )}
+            </div>
+            <ScrollArea className="max-h-72">
               {notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <Bell className="h-12 w-12 text-muted-foreground/50" />
-                  <p className="mt-4 text-sm text-muted-foreground">
+                <div className="flex flex-col items-center justify-center p-6 text-center">
+                  <Bell className="h-8 w-8 text-muted-foreground/50" />
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Henüz bildirim yok
                   </p>
                 </div>
               ) : (
-                notifications.map((notification) => (
+                notifications.slice(0, 5).map((notification) => (
                   <NotificationItem
                     key={notification.id}
                     notification={notification}
                     onMarkRead={markAsRead}
+                    onClick={() => {
+                      if (notification.link) {
+                        navigate(notification.link);
+                      }
+                      if (!notification.is_read) {
+                        markAsRead(notification.id);
+                      }
+                    }}
                   />
                 ))
               )}
             </ScrollArea>
-          </SheetContent>
-        </Sheet>
+          </PopoverContent>
+        </Popover>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
