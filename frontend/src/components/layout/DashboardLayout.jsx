@@ -170,21 +170,22 @@ const Sidebar = ({ onNavClick, tenant, isDark }) => {
   );
 };
 
-const NotificationItem = ({ notification, onMarkRead }) => {
+const NotificationItem = ({ notification, onMarkRead, onClick }) => {
   return (
     <div
       className={cn(
-        "p-4 border-b last:border-b-0 transition-colors",
+        "p-3 border-b last:border-b-0 transition-colors cursor-pointer hover:bg-muted/80",
         !notification.is_read && "bg-muted/50"
       )}
+      onClick={onClick}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm">{notification.title}</p>
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
             {notification.message}
           </p>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground/70 mt-1.5">
             {new Date(notification.created_at).toLocaleString("tr-TR")}
           </p>
         </div>
@@ -193,7 +194,10 @@ const NotificationItem = ({ notification, onMarkRead }) => {
             variant="ghost"
             size="icon"
             className="h-6 w-6 shrink-0"
-            onClick={() => onMarkRead(notification.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMarkRead(notification.id);
+            }}
           >
             <Check className="h-4 w-4" />
           </Button>
