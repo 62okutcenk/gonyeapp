@@ -1,0 +1,204 @@
+{
+  "identity": {
+    "name": "E1",
+    "role": "Anti-AI Creative Designer",
+    "principles": [
+      "Fusion over Imitation",
+      "Emotion First",
+      "Content is King",
+      "Zoom in",
+      "Negative Space",
+      "Contrast"
+    ],
+    "anti_patterns": [
+      "Purple/Teal for CTA",
+      "Inter everywhere (for headings)",
+      "Center-Everything Disease",
+      "Gradient Overload"
+    ]
+  },
+  "project_context": {
+    "name": "Carpenter SaaS (Marangoz Proje Yönetimi)",
+    "type": "SaaS Dashboard & Admin Panel",
+    "audience": "Carpenters, Manufacturers (Turkish Market)",
+    "vibe": "Swiss Utility meets Organic Craft. Precision tools for physical work.",
+    "theme_strategy": "Light Mode Default (Clean, Workshop-Bright). High contrast for readability in dusty environments."
+  },
+  "typography": {
+    "fonts": {
+      "heading": {
+        "family": "Manrope, sans-serif",
+        "weights": ["600", "700", "800"],
+        "usage": "Page titles, Section headers, Modal titles. Use tight tracking (-0.02em)."
+      },
+      "body": {
+        "family": "Public Sans, sans-serif",
+        "weights": ["400", "500"],
+        "usage": "Data tables, form inputs, long text. Optimized for UI legibility."
+      },
+      "mono": {
+        "family": "JetBrains Mono, monospace",
+        "weights": ["400"],
+        "usage": "IDs, SKU codes, Technical measurements."
+      }
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl font-bold tracking-tight",
+      "h2": "text-3xl font-semibold tracking-tight",
+      "h3": "text-2xl font-semibold",
+      "body_lg": "text-lg leading-relaxed",
+      "body_base": "text-base leading-normal",
+      "caption": "text-sm text-muted-foreground",
+      "tiny": "text-xs font-medium uppercase tracking-wider"
+    }
+  },
+  "colors": {
+    "palette": {
+      "base": {
+        "background": "#ffffff",
+        "foreground": "#0f172a",
+        "muted": "#f1f5f9",
+        "muted_foreground": "#64748b",
+        "border": "#e2e8f0"
+      },
+      "primary": {
+        "name": "Industrial Timber",
+        "main": "var(--primary-color, #4a4036)", 
+        "foreground": "#ffffff",
+        "description": "Deep, earthy brown-grey. Represents stability and wood. User customizable."
+      },
+      "secondary": {
+        "name": "Workshop Clay",
+        "main": "#d97706",
+        "foreground": "#ffffff",
+        "description": "Warm amber/orange for accents and high-priority alerts."
+      },
+      "status": {
+        "bekliyor": { "bg": "#f1f5f9", "text": "#475569" },
+        "planlandi": { "bg": "#dbeafe", "text": "#1e40af" },
+        "uretimde": { "bg": "#fef9c3", "text": "#854d0e" },
+        "kontrol": { "bg": "#ffedd5", "text": "#9a3412" },
+        "tamamlandi": { "bg": "#dcfce7", "text": "#166534" }
+      }
+    },
+    "rules": [
+      "Never use pure black (#000000). Use #0f172a (Slate 900).",
+      "Status colors must use 'subtle' variant (bg-light + text-dark) for badges.",
+      "Primary action buttons use the Tenant Brand Color.",
+      "Dashboard backgrounds should be 'Canvas' (white/off-white) to let data pop."
+    ]
+  },
+  "layout": {
+    "spacing_system": {
+      "base": "4px",
+      "container_padding": "p-6 md:p-8 lg:p-12",
+      "section_gap": "gap-8",
+      "item_gap": "gap-4"
+    },
+    "grid_strategies": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 (The Control Room Grid)",
+      "form": "grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl",
+      "detail_view": "grid grid-cols-1 lg:grid-cols-3 gap-8 (2 cols content, 1 col meta/actions)"
+    },
+    "containers": {
+      "card": "bg-white border border-border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200",
+      "panel": "bg-muted/30 border border-border/50 rounded-lg p-6"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "rounded-md font-medium shadow-sm hover:opacity-90 transition-all active:scale-95",
+      "secondary": "bg-white border border-input hover:bg-accent hover:text-accent-foreground",
+      "ghost": "hover:bg-accent hover:text-accent-foreground"
+    },
+    "inputs": {
+      "style": "rounded-md border-input bg-transparent shadow-sm focus-visible:ring-1 focus-visible:ring-ring",
+      "label": "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block"
+    },
+    "cards": {
+      "style": "rounded-xl border bg-card text-card-foreground shadow-sm",
+      "header": "flex flex-col space-y-1.5 p-6",
+      "content": "p-6 pt-0"
+    },
+    "tables": {
+      "style": "w-full caption-bottom text-sm",
+      "header": "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "row": "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+    },
+    "navigation": {
+      "sidebar": "w-64 border-r bg-background h-screen sticky top-0 flex flex-col",
+      "item": "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted"
+    }
+  },
+  "visual_enhancers": {
+    "borders": "1px solid #e2e8f0 (Slate 200). No thick borders.",
+    "shadows": "shadow-sm for cards, shadow-lg for dropdowns/modals. Avoid massive drop shadows.",
+    "glassmorphism": "Use sparingly. Only for sticky headers or floating action bars. backdrop-blur-md bg-white/80 border-b.",
+    "textures": "Use subtle noise or grain on the Login Page background to give it a 'material' feel."
+  },
+  "assets": {
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px or 2px. Consistent sizing (w-4 h-4 for meta, w-5 h-5 for nav)."
+    },
+    "images": {
+      "login_bg": {
+        "url": "https://images.unsplash.com/photo-1759756480941-7230dedf5fc9?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Modern carpentry workshop with light streaming in",
+        "usage": "Full screen background for Login/Register with overlay."
+      },
+      "texture_accent": {
+        "url": "https://images.unsplash.com/photo-1760237655540-8197ef24838b?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Abstract wooden geometric pattern",
+        "usage": "Subtle background for 'Setup' or 'Welcome' cards."
+      },
+      "empty_state_tools": {
+        "url": "https://images.unsplash.com/photo-1497218770144-3fea6dbc33fe?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Wood carving tools",
+        "usage": "Empty state for 'Work Items' or 'Production' list."
+      }
+    }
+  },
+  "motion": {
+    "transitions": "transition-all duration-200 ease-in-out",
+    "hover": "hover:-translate-y-0.5 hover:shadow-md",
+    "page_load": "animate-in fade-in slide-in-from-bottom-4 duration-500",
+    "list_stagger": "Stagger list items by 0.05s"
+  },
+  "accessibility": {
+    "contrast": "Ensure 4.5:1 for normal text. Use Slate-600+ on white.",
+    "focus": "Visible ring-2 ring-offset-2 ring-primary on all interactive elements.",
+    "labels": "All inputs must have visible labels or aria-labels."
+  },
+  "tech_stack": {
+    "framework": "React",
+    "styling": "Tailwind CSS",
+    "components": "Shadcn/UI",
+    "icons": "Lucide React",
+    "notifications": "Sonner (Toasts), WebSocket (Real-time)"
+  },
+  "instructions_to_main_agent": [
+    "1. SETUP: Ensure 'Manrope' and 'Public Sans' are imported in index.css or via Google Fonts.",
+    "2. THEME: Implement the 'Industrial Timber' primary color as a CSS variable (--primary) to allow for the Multi-tenant/User color customization requirement.",
+    "3. LAYOUT: Build the 'Dashboard Layout' with a collapsible Sidebar and a Topbar for User Profile/Notifications.",
+    "4. COMPONENTS: Customize Shadcn components (Card, Button, Input) to match the 'Swiss Utility' aesthetic (sharper corners, distinct borders).",
+    "5. NOTIFICATIONS: Implement the WebSocket connection in a global context/hook and use 'Sonner' for real-time toasts.",
+    "6. LANGUAGE: All UI text must be in TURKISH (Giriş Yap, Projeler, Ayarlar, etc.).",
+    "7. STATUS: Create a reusable 'StatusBadge' component that maps the status keys (bekliyor, planlandi...) to the specific color palette defined.",
+    "8. RBAC: Ensure UI elements (buttons, routes) are protected by a 'PermissionGuard' component based on the user's role."
+  ],
+  "universal_guidelines": {
+    "do_not": [
+      "Do not use gradients for text.",
+      "Do not use 'Inter' for headings.",
+      "Do not center-align long text blocks.",
+      "Do not use generic 'Lorem Ipsum' - use realistic Turkish carpentry data (e.g., 'Mutfak Dolabı Montajı', 'Ahmet Yılmaz')."
+    ],
+    "must_do": [
+      "Use 'data-testid' on all interactive elements.",
+      "Handle loading states with Skeletons, not spinners.",
+      "Use 'gap' for spacing, not margins.",
+      "Keep the UI 'Dense' but 'Airy' - high information density with good padding."
+    ]
+  }
+}
