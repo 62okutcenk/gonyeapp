@@ -83,27 +83,51 @@ const Sidebar = ({ onNavClick, tenant, isDark }) => {
   const fallbackLogo = isDark ? tenant?.light_logo_url : tenant?.dark_logo_url;
   const displayLogo = logoUrl || fallbackLogo;
 
+  // Get initials for fallback avatar
+  const getCompanyInitials = (name) => {
+    if (!name) return "CF";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="flex h-full flex-col gap-2">
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {displayLogo ? (
             <img 
               src={displayLogo} 
               alt={tenant?.name || "Logo"} 
               className="h-8 max-w-[150px] object-contain"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling && (e.target.nextSibling.style.display = 'flex');
+              }}
             />
-          ) : (
-            <>
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Package className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-lg tracking-tight">
-                {tenant?.name || "CraftForge"}
-              </span>
-            </>
-          )}
+          ) : null}
+          {/* Fallback: Company initials avatar */}
+          <div 
+            className={cn(
+              "h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0",
+              displayLogo && "hidden"
+            )}
+            style={{ display: displayLogo ? 'none' : 'flex' }}
+          >
+            <span className="text-sm font-bold text-primary-foreground">
+              {getCompanyInitials(tenant?.name)}
+            </span>
+          </div>
+          <span className={cn(
+            "font-semibold text-base tracking-tight truncate max-w-[130px]",
+            displayLogo && "hidden"
+          )}>
+            {tenant?.name || "CraftForge"}
+          </span>
         </div>
       </div>
 
