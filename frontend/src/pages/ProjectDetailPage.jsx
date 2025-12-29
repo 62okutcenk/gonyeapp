@@ -4,6 +4,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/utils/formatters";
+import { useAuth } from "@/contexts/AuthContext"; // Auth context eklendi
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Avatar eklendi
 import {
   Select,
   SelectContent,
@@ -78,7 +80,6 @@ import {
   Clock,
   Wrench,
   Factory,
-  X,
   Box,
   ListChecks,
   BadgeCheck,
@@ -104,6 +105,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // --- HELPERS & CONSTANTS ---
 
@@ -164,7 +166,6 @@ function activityIconByType(activity) {
   const t = String(activity?.activity_type || activity?.type || "").toLowerCase();
   const msg = String(activity?.message || "").toLowerCase();
 
-  // Dark mode renkleri güncellendi
   if (t.includes("file") || msg.includes("dosya")) return { icon: Paperclip, color: "text-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300" };
   if (t.includes("upload") || msg.includes("yükl")) return { icon: FileUp, color: "text-cyan-500 bg-cyan-50 dark:bg-cyan-900/20 dark:text-cyan-300" };
   if (t.includes("payment") || msg.includes("tahsil")) return { icon: BadgeDollarSign, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300" };
@@ -190,6 +191,7 @@ function safeDetailText(a) {
 export default function ProjectDetailPage() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
 
   // State Management
   const [project, setProject] = useState(null);
@@ -280,6 +282,19 @@ export default function ProjectDetailPage() {
   const fetchUsers = async () => { try { const r = await axios.get(`${API_URL}/users`); setUsers(r.data || []); } catch { setUsers([]); } };
   const fetchFiles = async () => { try { const r = await axios.get(`${API_URL}/files`, { params: { project_id: projectId } }); setFiles(r.data || []); } catch { setFiles([]); } };
 
+  // Helper to get Avatar URL for any user ID
+  const getUserAvatarUrl = (userId) => {
+    const u = users.find(x => x.id === userId);
+    if (!u || !u.avatar_url) return null;
+    return u.avatar_url.startsWith("http") ? u.avatar_url : BACKEND_URL + u.avatar_url;
+  };
+
+  // Helper to get User Color
+  const getUserColor = (userId) => {
+     const u = users.find(x => x.id === userId);
+     return u?.color || "#4a4036";
+  };
+
   // Computed Values
   const assignedAvatars = useMemo(() => {
     const list = project?.assignments || [];
@@ -328,27 +343,12 @@ export default function ProjectDetailPage() {
   // Finance Tab Computation (With Filter)
   const financeStats = useMemo(() => {
     const isAll = selectedFinanceAreaId === "all";
-    
-    // 1. Filtered Areas for "Total Agreed"
-    const targetAreas = isAll 
-        ? project?.areas || [] 
-        : (project?.areas || []).filter(a => a.id === selectedFinanceAreaId);
-
-    // 2. Filtered Payments for "Total Collected" and "History Table"
-    const targetPayments = isAll 
-        ? payments || [] 
-        : (payments || []).filter(p => p.area_id === selectedFinanceAreaId);
-
+    const targetAreas = isAll ? project?.areas || [] : (project?.areas || []).filter(a => a.id === selectedFinanceAreaId);
+    const targetPayments = isAll ? payments || [] : (payments || []).filter(p => p.area_id === selectedFinanceAreaId);
     const totalAgreed = targetAreas.reduce((acc, a) => acc + Number(a.agreed_price || 0), 0);
     const totalCollected = targetPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
     const totalRemaining = totalAgreed - totalCollected;
-
-    return { 
-        totalAgreed, 
-        totalCollected, 
-        totalRemaining, 
-        targetPayments 
-    };
+    return { totalAgreed, totalCollected, totalRemaining, targetPayments };
   }, [project, payments, selectedFinanceAreaId]);
 
   // Overview Tab Totals (Global)
@@ -523,7 +523,6 @@ export default function ProjectDetailPage() {
       
       {/* --- HERO HEADER SECTION --- */}
       <div className="relative overflow-hidden bg-slate-900 dark:bg-slate-950 text-white pb-24 pt-10 px-6 sm:px-10 shadow-xl border-b border-slate-800">
-        {/* Background Effects */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl opacity-40 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl opacity-40 pointer-events-none"></div>
         
@@ -570,10 +569,18 @@ export default function ProjectDetailPage() {
                      <div className="flex items-center gap-2 mr-2">
                          <div className="flex -space-x-3 items-center">
                             {assignedAvatars.slice(0, 4).map((a) => (
-                                <div key={a.id} className="h-10 w-10 rounded-full border-2 border-slate-900 bg-white flex items-center justify-center text-xs font-bold text-slate-800 shadow-sm" title={a.user_name}>
-                                    {getInitials(a.user_name)}
-                                </div>
+                                <Avatar key={a.id} className="h-10 w-10 border-2 border-slate-900 cursor-pointer shadow-sm hover:scale-105 transition-transform" title={a.user_name}>
+                                    <AvatarImage src={getUserAvatarUrl(a.user_id)} className="object-cover" />
+                                    <AvatarFallback className="bg-white text-slate-800 text-xs font-bold">
+                                        {getInitials(a.user_name)}
+                                    </AvatarFallback>
+                                </Avatar>
                             ))}
+                            {assignedAvatars.length > 4 && (
+                                <div className="h-10 w-10 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-xs font-bold text-white shadow-sm z-10">
+                                    +{assignedAvatars.length - 4}
+                                </div>
+                            )}
                          </div>
                          <button 
                              onClick={() => setTeamDialog(true)}
@@ -693,20 +700,33 @@ export default function ProjectDetailPage() {
                                     <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-200"><Activity className="h-5 w-5 text-slate-500" /> Son Aktiviteler</h3>
                                     <Card className="h-[500px] overflow-hidden flex flex-col border-slate-200 dark:border-slate-800 shadow-sm bg-slate-50/50 dark:bg-slate-900/50">
                                         <div className="flex-1 overflow-y-auto p-4 pr-2 custom-scrollbar">
-                                            <div className="relative border-l border-slate-200 dark:border-slate-800 ml-3 space-y-6 pb-4">
+                                            <div className="relative border-l border-slate-200 dark:border-slate-800 ml-4 space-y-8 pb-4">
                                                 {activities.map((a, i) => {
                                                     const { icon: AIcon, color } = activityIconByType(a);
                                                     const detail = safeDetailText(a);
+                                                    const avatarUrl = getUserAvatarUrl(a.user_id);
+                                                    
                                                     return (
                                                         <div key={a.id} className="relative pl-6">
-                                                            <div className={cn("absolute -left-3 top-0 h-6 w-6 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center shadow-sm", color)}>
-                                                                <AIcon className="h-3 w-3" />
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200">{a.message}</span>
-                                                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                                                     <span>{a.user_name}</span> • <span>{new Date(a.created_at).toLocaleString("tr-TR")}</span>
+                                                            {/* User Avatar on Timeline Line */}
+                                                            <div className="absolute -left-4 top-0">
+                                                                <Avatar className="h-8 w-8 border-2 border-white dark:border-slate-900 shadow-sm">
+                                                                    <AvatarImage src={avatarUrl} />
+                                                                    <AvatarFallback className="text-[10px] bg-slate-200 text-slate-700">{getInitials(a.user_name)}</AvatarFallback>
+                                                                </Avatar>
+                                                                {/* Tiny Action Icon Badge */}
+                                                                <div className={cn("absolute -bottom-1 -right-1 h-4 w-4 rounded-full border border-white dark:border-slate-900 flex items-center justify-center text-[8px]", color)}>
+                                                                    <AIcon className="h-2 w-2" />
                                                                 </div>
+                                                            </div>
+
+                                                            <div className="flex flex-col gap-1 mt-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{a.user_name}</span>
+                                                                    <span className="text-xs text-slate-400">• {new Date(a.created_at).toLocaleString("tr-TR")}</span>
+                                                                </div>
+                                                                <span className="text-sm text-slate-600 dark:text-slate-300">{a.message}</span>
+                                                                
                                                                 {detail && (
                                                                     <div className="mt-1 p-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md text-xs text-slate-500 dark:text-slate-400 shadow-sm break-all">
                                                                         {detail}
@@ -822,7 +842,13 @@ export default function ProjectDetailPage() {
                                                                                         <div className="font-medium text-sm text-slate-700 dark:text-slate-200 truncate">{wi.workItemName}</div>
                                                                                         <div className="text-xs text-slate-400 flex items-center gap-2 truncate">
                                                                                             {mainTask?.assigned_to_name ? (
-                                                                                                <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-medium"><Users className="h-3 w-3" /> {mainTask.assigned_to_name}</span>
+                                                                                                <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-medium">
+                                                                                                    <Avatar className="h-4 w-4">
+                                                                                                        <AvatarImage src={getUserAvatarUrl(mainTask.assigned_to)} />
+                                                                                                        <AvatarFallback className="text-[8px]">{getInitials(mainTask.assigned_to_name)}</AvatarFallback>
+                                                                                                    </Avatar>
+                                                                                                    {mainTask.assigned_to_name}
+                                                                                                </span>
                                                                                             ) : (
                                                                                                 <span className="text-amber-500">Atanmamış</span>
                                                                                             )}
@@ -920,7 +946,6 @@ export default function ProjectDetailPage() {
                                         </p>
                                         <Button 
                                             onClick={() => {
-                                                // If specific area selected, pre-fill it
                                                 if(selectedFinanceAreaId !== "all") {
                                                     setPaymentForm(prev => ({...prev, area_id: selectedFinanceAreaId}));
                                                 }
@@ -985,7 +1010,7 @@ export default function ProjectDetailPage() {
         </Card>
       </div>
 
-      {/* --- DIALOGS (Consolidated & Refined) --- */}
+      {/* --- DIALOGS --- */}
 
       {/* Unified Team Dialog */}
       <Dialog open={teamDialog} onOpenChange={setTeamDialog}>
@@ -1022,7 +1047,10 @@ export default function ProjectDetailPage() {
                             {(project?.assignments || []).map((a) => (
                                 <TableRow key={a.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <TableCell className="font-medium flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                                        <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-700 dark:text-slate-300">{getInitials(a.user_name)}</div>
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={getUserAvatarUrl(a.user_id)} />
+                                            <AvatarFallback className="text-xs">{getInitials(a.user_name)}</AvatarFallback>
+                                        </Avatar>
                                         {a.user_name}
                                     </TableCell>
                                     <TableCell>
@@ -1072,10 +1100,22 @@ export default function ProjectDetailPage() {
                      <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Personel</label>
                         <Select value={assignForm.user_id || "none"} onValueChange={(v) => setAssignForm((a) => ({ ...a, user_id: v === "none" ? "" : v }))}>
-                            <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"><SelectValue placeholder="Personel Seçin" /></SelectTrigger>
+                            <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 h-auto py-2">
+                                <SelectValue placeholder="Personel Seçin" />
+                            </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="none">Seçiniz</SelectItem>
-                                {(users || []).map((u) => <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>)}
+                                {(users || []).map((u) => (
+                                    <SelectItem key={u.id} value={u.id}>
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-5 w-5">
+                                                <AvatarImage src={getUserAvatarUrl(u.id)} />
+                                                <AvatarFallback className="text-[9px]">{getInitials(u.full_name)}</AvatarFallback>
+                                            </Avatar>
+                                            {u.full_name || u.email}
+                                        </div>
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                      </div>
@@ -1186,10 +1226,20 @@ export default function ProjectDetailPage() {
                         <div className="space-y-2">
                              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Görevli</label>
                              <Select value={taskEdit.assigned_to} onValueChange={(v) => setTaskEdit((s) => ({ ...s, assigned_to: v }))}>
-                                <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 h-auto py-2"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="unassigned">Atanmamış</SelectItem>
-                                    {(users || []).map((u) => <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>)}
+                                    {(users || []).map((u) => (
+                                        <SelectItem key={u.id} value={u.id}>
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-5 w-5">
+                                                    <AvatarImage src={getUserAvatarUrl(u.id)} />
+                                                    <AvatarFallback className="text-[9px]">{getInitials(u.full_name)}</AvatarFallback>
+                                                </Avatar>
+                                                {u.full_name || u.email}
+                                            </div>
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                              </Select>
                         </div>

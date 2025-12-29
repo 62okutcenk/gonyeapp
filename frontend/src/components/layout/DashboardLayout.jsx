@@ -18,8 +18,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
@@ -56,6 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const navigation = [
   { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
@@ -160,7 +159,7 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse }) =>
 
   return (
     <div className="flex h-full flex-col gap-2 relative">
-      {/* Toggle Button - Logo seviyesinde ortalanmış */}
+      {/* Toggle Button */}
       <Button
         variant="ghost"
         size="icon"
@@ -315,7 +314,7 @@ const ThemeSwitch = ({ isDark, onToggle }) => {
         )}
       </span>
       
-      {/* Yıldızlar efekti - Dark mode */}
+      {/* Efektler */}
       <div className={cn(
         "absolute left-1.5 flex gap-0.5 transition-opacity duration-700",
         isDark ? "opacity-100" : "opacity-0"
@@ -324,7 +323,6 @@ const ThemeSwitch = ({ isDark, onToggle }) => {
         <span className="text-amber-300 text-[6px] mt-0.5">✦</span>
       </div>
       
-      {/* Güneş ışınları efekti - Light mode */}
       <div className={cn(
         "absolute right-1.5 flex gap-0.5 transition-opacity duration-700",
         !isDark ? "opacity-100" : "opacity-0"
@@ -387,11 +385,16 @@ export default function DashboardLayout() {
 
   const getInitials = (name) => {
     return name
-      .split(" ")
+      ?.split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const getAvatarUrl = () => {
+    if (!user?.avatar_url) return null;
+    return user.avatar_url.startsWith("http") ? user.avatar_url : BACKEND_URL + user.avatar_url;
   };
 
   return (
@@ -428,76 +431,15 @@ export default function DashboardLayout() {
         </Sheet>
 
         <div className="flex-1" />
-
-        {/* Theme Toggle - Mobile */}
         <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
-
-        {/* Mobile Notifications - Popover */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                >
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-0" align="end">
-            <div className="flex items-center justify-between p-3 border-b">
-              <h4 className="font-semibold text-sm">Bildirimler</h4>
-              {unreadCount > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={markAllAsRead}
-                >
-                  Tümünü Oku
-                </Button>
-              )}
-            </div>
-            <ScrollArea className="max-h-72">
-              {notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-6 text-center">
-                  <Bell className="h-8 w-8 text-muted-foreground/50" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Henüz bildirim yok
-                  </p>
-                </div>
-              ) : (
-                notifications.slice(0, 5).map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onMarkRead={markAsRead}
-                    onClick={() => {
-                      if (notification.link) {
-                        navigate(notification.link);
-                      }
-                      if (!notification.is_read) {
-                        markAsRead(notification.id);
-                      }
-                    }}
-                  />
-                ))
-              )}
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
-
+        
+        {/* Mobile Avatar */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
               <Avatar className="h-8 w-8">
-                <AvatarFallback
-                  style={{ backgroundColor: user?.color || "#4a4036" }}
-                  className="text-white text-xs"
-                >
+                <AvatarImage src={getAvatarUrl()} className="object-cover" />
+                <AvatarFallback style={{ backgroundColor: user?.color || "#4a4036" }} className="text-white text-xs">
                   {getInitials(user?.full_name || "U")}
                 </AvatarFallback>
               </Avatar>
@@ -506,9 +448,11 @@ export default function DashboardLayout() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>{user?.full_name}</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/profile")}>
+                <Users className="mr-2 h-4 w-4" /> Profilim
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Çıkış Yap
+              <LogOut className="mr-2 h-4 w-4" /> Çıkış Yap
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -524,22 +468,16 @@ export default function DashboardLayout() {
           <div />
 
           <div className="flex items-center gap-4">
-            {/* Current Time */}
             <CurrentTime />
-
-            {/* Theme Toggle */}
             <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
 
-            {/* Notifications - Desktop Dropdown */}
+            {/* Notifications */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative" data-testid="notifications-button">
                   <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                    >
+                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                       {unreadCount}
                     </Badge>
                   )}
@@ -549,12 +487,7 @@ export default function DashboardLayout() {
                 <div className="flex items-center justify-between p-3 border-b">
                   <h4 className="font-semibold text-sm">Bildirimler</h4>
                   {unreadCount > 0 && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 text-xs"
-                      onClick={markAllAsRead}
-                    >
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAsRead}>
                       Tümünü Oku
                     </Button>
                   )}
@@ -563,9 +496,7 @@ export default function DashboardLayout() {
                   {notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-6 text-center">
                       <Bell className="h-8 w-8 text-muted-foreground/50" />
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Henüz bildirim yok
-                      </p>
+                      <p className="mt-2 text-sm text-muted-foreground">Henüz bildirim yok</p>
                     </div>
                   ) : (
                     notifications.slice(0, 5).map((notification) => (
@@ -574,12 +505,8 @@ export default function DashboardLayout() {
                         notification={notification}
                         onMarkRead={markAsRead}
                         onClick={() => {
-                          if (notification.link) {
-                            navigate(notification.link);
-                          }
-                          if (!notification.is_read) {
-                            markAsRead(notification.id);
-                          }
+                          if (notification.link) navigate(notification.link);
+                          if (!notification.is_read) markAsRead(notification.id);
                         }}
                       />
                     ))
@@ -587,12 +514,7 @@ export default function DashboardLayout() {
                 </ScrollArea>
                 {notifications.length > 5 && (
                   <div className="p-2 border-t">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full text-xs"
-                      onClick={() => navigate("/notifications")}
-                    >
+                    <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => navigate("/notifications")}>
                       Tüm bildirimleri gör ({notifications.length})
                     </Button>
                   </div>
@@ -600,50 +522,36 @@ export default function DashboardLayout() {
               </PopoverContent>
             </Popover>
 
-            {/* User Menu */}
-              <DropdownMenu>
+            {/* User Menu with Avatar */}
+            <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2" data-testid="user-menu-button">
-                    <Avatar className="h-8 w-8">
-                      {/* Avatar Image Eklendi */}
-                      <AvatarImage 
-                          src={user?.avatar_url ? process.env.REACT_APP_BACKEND_URL + user.avatar_url : undefined} 
-                          className="object-cover"
-                      />
-                      <AvatarFallback
-                        style={{ backgroundColor: user?.color || "#4a4036" }}
-                        className="text-white text-xs"
-                      >
+                  <Button variant="ghost" className="gap-2 pl-2" data-testid="user-menu-button">
+                    <Avatar className="h-8 w-8 border border-muted">
+                      <AvatarImage src={getAvatarUrl()} className="object-cover" />
+                      <AvatarFallback style={{ backgroundColor: user?.color || "#4a4036" }} className="text-white text-xs">
                         {getInitials(user?.full_name || "U")}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="hidden md:inline">{user?.full_name}</span>
-                    <ChevronDown className="h-4 w-4" />
+                    <span className="hidden md:inline text-sm font-medium">{user?.full_name}</span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
                       <span>{user?.full_name}</span>
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {user?.email}
-                      </span>
+                      <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  
-                  {/* Profilim Linki Eklendi */}
                   <DropdownMenuItem onClick={() => navigate("/profile")}>
-                    <Users className="mr-2 h-4 w-4" />
-                    Profilim
+                    <Users className="mr-2 h-4 w-4" /> Profilim
                   </DropdownMenuItem>
-                  
                   <DropdownMenuItem onClick={handleLogout} data-testid="logout-button">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Çıkış Yap
+                    <LogOut className="mr-2 h-4 w-4" /> Çıkış Yap
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+            </DropdownMenu>
           </div>
         </header>
 

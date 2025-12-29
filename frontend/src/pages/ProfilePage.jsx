@@ -10,6 +10,7 @@ import axios from "axios";
 import { Loader2, Upload, Trash2, User, Mail, Shield } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -75,6 +76,7 @@ export default function ProfilePage() {
           "Content-Type": "multipart/form-data",
         },
       });
+      // Cache'i kırmak için user'ı yenile
       await refreshUser();
       toast.success("Profil fotoğrafı güncellendi");
     } catch (error) {
@@ -88,7 +90,7 @@ export default function ProfilePage() {
   };
 
   const handleRemoveAvatar = async () => {
-    if (!confirm("Profil fotoğrafınızı silmek istediğinize emin misiniz?")) return;
+    if (!window.confirm("Profil fotoğrafınızı silmek istediğinize emin misiniz?")) return;
     
     setUploading(true);
     try {
@@ -102,9 +104,13 @@ export default function ProfilePage() {
     }
   };
 
-  const fullAvatarUrl = user?.avatar_url 
-    ? (user.avatar_url.startsWith("http") ? user.avatar_url : process.env.REACT_APP_BACKEND_URL + user.avatar_url)
-    : null;
+  // Avatar URL oluşturma (Cache busting ile)
+  const getAvatarUrl = () => {
+    if (!user?.avatar_url) return null;
+    const baseUrl = user.avatar_url.startsWith("http") ? user.avatar_url : BACKEND_URL + user.avatar_url;
+    // URL sonuna timestamp ekle
+    return `${baseUrl}?t=${new Date().getTime()}`;
+  };
 
   return (
     <div className="container mx-auto max-w-4xl py-6 space-y-8">
@@ -128,7 +134,7 @@ export default function ProfilePage() {
           <CardContent className="flex flex-col items-center gap-6">
             <div className="relative group">
               <Avatar className="h-40 w-40 border-4 border-background shadow-xl cursor-pointer" onClick={handleAvatarClick}>
-                <AvatarImage src={fullAvatarUrl} className="object-cover" />
+                <AvatarImage src={getAvatarUrl()} className="object-cover" />
                 <AvatarFallback className="text-4xl bg-primary/10 text-primary">
                   {getInitials(user?.full_name)}
                 </AvatarFallback>

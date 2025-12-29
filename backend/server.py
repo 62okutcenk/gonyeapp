@@ -14,6 +14,8 @@ import jwt
 import bcrypt
 import json
 import asyncio
+from fastapi import Form
+from fastapi.staticfiles import StaticFiles
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -592,6 +594,7 @@ async def register(data: UserRegister):
         "tenant_id": tenant_id,
         "role_id": admin_role["id"] if is_admin else None,
         "color": "#4a4036",
+        "avatar_url": None,
         "is_admin": is_admin,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
@@ -612,6 +615,7 @@ async def register(data: UserRegister):
             tenant_id=user["tenant_id"],
             role_id=user.get("role_id"),
             color=user["color"],
+            avatar_url=user.get("avatar_url"), # Added avatar_url
             is_admin=user["is_admin"],
             setup_completed=setup_completed,
             created_at=user["created_at"]
@@ -639,6 +643,7 @@ async def login(data: UserLogin):
             tenant_id=user["tenant_id"],
             role_id=user.get("role_id"),
             color=user.get("color", "#4a4036"),
+            avatar_url=user.get("avatar_url"), # Added avatar_url
             is_admin=user.get("is_admin", False),
             setup_completed=setup_completed,
             created_at=user["created_at"]
@@ -658,10 +663,13 @@ async def get_me(user: dict = Depends(get_current_user)):
         tenant_id=user["tenant_id"],
         role_id=user.get("role_id"),
         color=user.get("color", "#4a4036"),
+        avatar_url=user.get("avatar_url"), # Added avatar_url
         is_admin=user.get("is_admin", False),
         setup_completed=setup_completed,
         created_at=user["created_at"]
     )
+
+# ... (Rest of the server.py file remains the same)
 
 # ==================== TENANT ROUTES ====================
 
@@ -1937,8 +1945,6 @@ async def delete_user_avatar(user: dict = Depends(get_current_user)):
     return UserResponse(**updated_user)
     
 # ==================== FILE UPLOAD ROUTES ====================
-
-from fastapi import Form
 
 @api_router.post("/files/upload")
 async def upload_file(
