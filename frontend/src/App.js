@@ -17,6 +17,7 @@ import SetupWorkItemsPage from "@/pages/setup/SetupWorkItemsPage";
 import SetupRolesPage from "@/pages/setup/SetupRolesPage";
 import SetupSettingsPage from "@/pages/setup/SetupSettingsPage";
 import UsersPage from "@/pages/UsersPage";
+import ProfilePage from "@/pages/ProfilePage";
 
 // Layout
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -110,6 +111,7 @@ function AppRoutes() {
         <Route path="projects/new" element={<NewProjectPage />} />
         <Route path="projects/:id" element={<ProjectDetailPage />} />
         <Route path="users" element={<UsersPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="setup/groups" element={<SetupGroupsPage />} />
         <Route path="setup/workitems" element={<SetupWorkItemsPage />} />
         <Route path="setup/roles" element={<SetupRolesPage />} />

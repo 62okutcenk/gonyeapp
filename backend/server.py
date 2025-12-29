@@ -56,6 +56,7 @@ class UserResponse(BaseModel):
     tenant_id: str
     role_id: Optional[str] = None
     color: str = "#4a4036"
+    avatar_url: Optional[str] = None
     is_admin: bool = False
     setup_completed: bool = False
     created_at: str
@@ -1857,6 +1858,84 @@ async def get_unread_count(user: dict = Depends(get_current_user)):
     count = await db.notifications.count_documents({"user_id": user["id"], "is_read": False})
     return {"count": count}
 
+# ==================== AVATAR ROUTES (YENİ) ====================
+
+@api_router.post("/users/me/avatar", response_model=UserResponse)
+async def upload_user_avatar(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    # İzin verilen dosya tipleri
+    if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
+        raise HTTPException(status_code=400, detail="Sadece resim dosyaları (JPEG, PNG, WEBP) yüklenebilir.")
+
+    # Klasör yapısı: uploads/{tenant_id}/avatars/
+    upload_dir = ROOT_DIR / "uploads" / user["tenant_id"] / "avatars"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Dosya isimlendirme (user_id.uzantı) - Her kullanıcının tek avatarı olur, eskisi üzerine yazılır
+    file_ext = Path(file.filename).suffix
+    if not file_ext:
+        file_ext = ".jpg" # Varsayılan
+        
+    filename = f"{user['id']}_avatar{file_ext}"
+    file_path = upload_dir / filename
+
+    # Dosyayı kaydet
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    # URL oluştur (API üzerinden sunulacak)
+    avatar_url = f"/api/users/avatars/{user['tenant_id']}/{filename}"
+    
+    # DB Güncelle
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"avatar_url": avatar_url}}
+    )
+    
+    # Güncel kullanıcıyı döndür
+    updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
+    return UserResponse(**updated_user)
+
+@api_router.get("/users/avatars/{tenant_id}/{filename}")
+async def get_user_avatar(tenant_id: str, filename: str):
+    from fastapi.responses import FileResponse
+    
+    file_path = ROOT_DIR / "uploads" / tenant_id / "avatars" / filename
+    
+    if not file_path.exists():
+        # Varsayılan bir resim veya 404 dönebiliriz. Şimdilik 404.
+        raise HTTPException(status_code=404, detail="Avatar bulunamadı")
+        
+    return FileResponse(file_path)
+
+@api_router.delete("/users/me/avatar", response_model=UserResponse)
+async def delete_user_avatar(user: dict = Depends(get_current_user)):
+    # Mevcut avatar bilgisini al
+    current_user = await db.users.find_one({"id": user["id"]})
+    if current_user and current_user.get("avatar_url"):
+        # Dosya yolunu bul ve sil
+        try:
+            # URL: /api/users/avatars/{tenant_id}/{filename}
+            parts = current_user["avatar_url"].split("/")
+            filename = parts[-1]
+            file_path = ROOT_DIR / "uploads" / user["tenant_id"] / "avatars" / filename
+            if file_path.exists():
+                file_path.unlink()
+        except Exception as e:
+            print(f"Avatar silme hatası: {e}")
+
+    # DB'den kaldır
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"avatar_url": None}}
+    )
+
+    updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password": 0})
+    return UserResponse(**updated_user)
+    
 # ==================== FILE UPLOAD ROUTES ====================
 
 from fastapi import Form

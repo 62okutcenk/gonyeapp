@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -601,37 +601,49 @@ export default function DashboardLayout() {
             </Popover>
 
             {/* User Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2" data-testid="user-menu-button">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback
-                      style={{ backgroundColor: user?.color || "#4a4036" }}
-                      className="text-white text-xs"
-                    >
-                      {getInitials(user?.full_name || "U")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden md:inline">{user?.full_name}</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span>{user?.full_name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      {user?.email}
-                    </span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} data-testid="logout-button">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Çıkış Yap
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2" data-testid="user-menu-button">
+                    <Avatar className="h-8 w-8">
+                      {/* Avatar Image Eklendi */}
+                      <AvatarImage 
+                          src={user?.avatar_url ? process.env.REACT_APP_BACKEND_URL + user.avatar_url : undefined} 
+                          className="object-cover"
+                      />
+                      <AvatarFallback
+                        style={{ backgroundColor: user?.color || "#4a4036" }}
+                        className="text-white text-xs"
+                      >
+                        {getInitials(user?.full_name || "U")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden md:inline">{user?.full_name}</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span>{user?.full_name}</span>
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {user?.email}
+                      </span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Profilim Linki Eklendi */}
+                  <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Profilim
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={handleLogout} data-testid="logout-button">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Çıkış Yap
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
           </div>
         </header>
 
