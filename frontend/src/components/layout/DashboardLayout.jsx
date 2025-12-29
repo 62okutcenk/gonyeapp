@@ -29,6 +29,12 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   LayoutDashboard,
   FolderKanban,
   Users,
@@ -44,6 +50,8 @@ import {
   Check,
   Sun,
   Moon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -62,33 +70,61 @@ const setupNavigation = [
   { name: "Firma Ayarları", href: "/setup/settings", icon: Building2 },
 ];
 
-const NavItem = ({ item, onClick }) => (
-  <NavLink
-    to={item.href}
-    onClick={onClick}
-    className={({ isActive }) =>
-      cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-        isActive
-          ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      )
-    }
-  >
-    <item.icon className="h-5 w-5" />
-    {item.name}
-  </NavLink>
-);
+const NavItem = ({ item, onClick, collapsed }) => {
+  if (collapsed) {
+    return (
+      <TooltipProvider delayDuration={100}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NavLink
+              to={item.href}
+              onClick={onClick}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )
+              }
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+            </NavLink>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            {item.name}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
-const Sidebar = ({ onNavClick, tenant, isDark }) => {
+  return (
+    <NavLink
+      to={item.href}
+      onClick={onClick}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+          isActive
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )
+      }
+    >
+      <item.icon className="h-5 w-5 shrink-0" />
+      <span>{item.name}</span>
+    </NavLink>
+  );
+};
+
+const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse }) => {
   const [setupOpen, setSetupOpen] = useState(true);
 
-  // Determine which logo to show
   const logoUrl = isDark ? tenant?.dark_logo_url : tenant?.light_logo_url;
   const fallbackLogo = isDark ? tenant?.light_logo_url : tenant?.dark_logo_url;
   const displayLogo = logoUrl || fallbackLogo;
 
-  // Get initials for fallback avatar
   const getCompanyInitials = (name) => {
     if (!name) return "CF";
     return name
@@ -99,40 +135,85 @@ const Sidebar = ({ onNavClick, tenant, isDark }) => {
       .slice(0, 2);
   };
 
+  const setupButton = (
+    <button
+      onClick={() => setSetupOpen(!setupOpen)}
+      className={cn(
+        "flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200",
+        collapsed ? "justify-center" : "justify-between"
+      )}
+    >
+      <span className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+        <Settings className="h-5 w-5 shrink-0" />
+        {!collapsed && "Kurulum"}
+      </span>
+      {!collapsed && (
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 transition-transform duration-300",
+            setupOpen && "rotate-180"
+          )}
+        />
+      )}
+    </button>
+  );
+
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex h-full flex-col gap-2 relative">
+      {/* Toggle Button - Logo seviyesinde ortalanmış */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleCollapse}
+        className="absolute -right-3 top-8 z-50 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-muted transition-all duration-300 hover:scale-110"
+      >
+        {collapsed ? (
+          <ChevronRight className="h-4 w-4" />
+        ) : (
+          <ChevronLeft className="h-4 w-4" />
+        )}
+      </Button>
+
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
-        <div className="flex items-center gap-3">
-          {displayLogo ? (
+        <div className={cn(
+          "flex items-center gap-3 transition-all duration-700",
+          collapsed && "justify-center w-full"
+        )}>
+          {displayLogo && !collapsed ? (
             <img 
               src={displayLogo} 
               alt={tenant?.name || "Logo"} 
-              className="h-8 max-w-[150px] object-contain"
+              className="h-10 max-w-[180px] w-auto object-contain transition-all duration-700"
+              style={{ maxHeight: '40px' }}
               onError={(e) => {
                 e.target.style.display = 'none';
-                e.target.nextSibling && (e.target.nextSibling.style.display = 'flex');
+                const fallbackDiv = e.target.nextSibling;
+                if (fallbackDiv) fallbackDiv.style.display = 'flex';
               }}
             />
           ) : null}
-          {/* Fallback: Company initials avatar */}
+          
           <div 
             className={cn(
-              "h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0",
-              displayLogo && "hidden"
+              "h-10 w-10 rounded-lg bg-primary flex items-center justify-center shrink-0 transition-all duration-700",
+              displayLogo && !collapsed && "hidden"
             )}
-            style={{ display: displayLogo ? 'none' : 'flex' }}
+            style={{ display: (displayLogo && !collapsed) ? 'none' : 'flex' }}
           >
-            <span className="text-sm font-bold text-primary-foreground">
+            <span className="text-base font-bold text-primary-foreground">
               {getCompanyInitials(tenant?.name)}
             </span>
           </div>
-          <span className={cn(
-            "font-semibold text-base tracking-tight truncate max-w-[130px]",
-            displayLogo && "hidden"
-          )}>
-            {tenant?.name || "CraftForge"}
-          </span>
+          
+          {!collapsed && (
+            <span className={cn(
+              "font-semibold text-base tracking-tight truncate max-w-[130px] transition-all duration-700",
+              displayLogo && "hidden"
+            )}>
+              {tenant?.name || "CraftForge"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -140,31 +221,30 @@ const Sidebar = ({ onNavClick, tenant, isDark }) => {
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
           {navigation.map((item) => (
-            <NavItem key={item.href} item={item} onClick={onNavClick} />
+            <NavItem key={item.href} item={item} onClick={onNavClick} collapsed={collapsed} />
           ))}
 
           {/* Setup Section */}
           <div className="mt-6">
-            <button
-              onClick={() => setSetupOpen(!setupOpen)}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
-            >
-              <span className="flex items-center gap-3">
-                <Settings className="h-5 w-5" />
-                Kurulum
-              </span>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform",
-                  setupOpen && "rotate-180"
-                )}
-              />
-            </button>
+            {collapsed ? (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {setupButton}
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    Kurulum
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              setupButton
+            )}
 
-            {setupOpen && (
-              <div className="mt-1 ml-4 flex flex-col gap-1 border-l pl-4">
+            {setupOpen && !collapsed && (
+              <div className="mt-1 ml-4 flex flex-col gap-1 border-l pl-4 transition-all duration-500">
                 {setupNavigation.map((item) => (
-                  <NavItem key={item.href} item={item} onClick={onNavClick} />
+                  <NavItem key={item.href} item={item} onClick={onNavClick} collapsed={false} />
                 ))}
               </div>
             )}
@@ -212,6 +292,72 @@ const NotificationItem = ({ notification, onMarkRead, onClick }) => {
   );
 };
 
+const ThemeSwitch = ({ isDark, onToggle }) => {
+  return (
+    <button
+      onClick={onToggle}
+      className={cn(
+        "relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-500 ease-in-out shadow-sm hover:shadow-md",
+        isDark ? "bg-slate-700" : "bg-amber-400"
+      )}
+      aria-label="Toggle theme"
+    >
+      <span
+        className={cn(
+          "inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-md transform transition-all duration-700 ease-out",
+          isDark ? "translate-x-6" : "translate-x-1"
+        )}
+      >
+        {isDark ? (
+          <Moon className="h-3 w-3 text-slate-700 transition-transform duration-500 rotate-0" />
+        ) : (
+          <Sun className="h-3 w-3 text-amber-500 transition-transform duration-500 rotate-0" />
+        )}
+      </span>
+      
+      {/* Yıldızlar efekti - Dark mode */}
+      <div className={cn(
+        "absolute left-1.5 flex gap-0.5 transition-opacity duration-700",
+        isDark ? "opacity-100" : "opacity-0"
+      )}>
+        <span className="text-amber-200 text-[10px]">✦</span>
+        <span className="text-amber-300 text-[6px] mt-0.5">✦</span>
+      </div>
+      
+      {/* Güneş ışınları efekti - Light mode */}
+      <div className={cn(
+        "absolute right-1.5 flex gap-0.5 transition-opacity duration-700",
+        !isDark ? "opacity-100" : "opacity-0"
+      )}>
+        <span className="text-amber-600 text-[10px]">✺</span>
+        <span className="text-amber-500 text-[6px] mt-0.5">✺</span>
+      </div>
+    </button>
+  );
+};
+
+const CurrentTime = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="text-sm font-medium text-muted-foreground tabular-nums">
+      {time.toLocaleTimeString("tr-TR", { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      })}
+    </div>
+  );
+};
+
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -219,6 +365,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tenant, setTenant] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const fetchTenant = async () => {
     try {
@@ -250,8 +397,16 @@ export default function DashboardLayout() {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 border-r bg-background lg:block">
-        <Sidebar tenant={tenant} isDark={isDark} />
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 hidden border-r bg-background lg:block transition-all duration-700 ease-in-out",
+        sidebarCollapsed ? "w-20" : "w-64"
+      )}>
+        <Sidebar 
+          tenant={tenant} 
+          isDark={isDark} 
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
       </aside>
 
       {/* Mobile Header */}
@@ -263,16 +418,19 @@ export default function DashboardLayout() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
-            <Sidebar onNavClick={() => setMobileMenuOpen(false)} tenant={tenant} isDark={isDark} />
+            <Sidebar 
+              onNavClick={() => setMobileMenuOpen(false)} 
+              tenant={tenant} 
+              isDark={isDark}
+              collapsed={false}
+            />
           </SheetContent>
         </Sheet>
 
         <div className="flex-1" />
 
         {/* Theme Toggle - Mobile */}
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
+        <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
 
         {/* Mobile Notifications - Popover */}
         <Popover>
@@ -357,21 +515,20 @@ export default function DashboardLayout() {
       </header>
 
       {/* Main Content */}
-      <div className="lg:pl-64">
+      <div className={cn(
+        "transition-all duration-700 ease-in-out",
+        sidebarCollapsed ? "lg:pl-20" : "lg:pl-64"
+      )}>
         {/* Desktop Header */}
         <header className="sticky top-0 z-40 hidden h-16 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 lg:flex">
           <div />
 
           <div className="flex items-center gap-4">
+            {/* Current Time */}
+            <CurrentTime />
+
             {/* Theme Toggle */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleTheme}
-              data-testid="theme-toggle-button"
-            >
-              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
+            <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
 
             {/* Notifications - Desktop Dropdown */}
             <Popover>
