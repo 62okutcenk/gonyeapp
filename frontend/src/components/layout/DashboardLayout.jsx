@@ -50,23 +50,37 @@ import {
   Moon,
   ChevronLeft,
   ChevronRight,
+  Briefcase
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-const navigation = [
-  { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Projeler", href: "/projects", icon: FolderKanban },
-  { name: "Kullanıcılar", href: "/users", icon: Users },
-];
-
-const setupNavigation = [
-  { name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers },
-  { name: "İş Kalemleri", href: "/setup/workitems", icon: Package },
-  { name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield },
-  { name: "Firma Ayarları", href: "/setup/settings", icon: Building2 },
+// ERP Tarzı Kategorize Edilmiş Navigasyon
+const navGroups = [
+  {
+    title: "GENEL",
+    items: [
+      { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Projeler", href: "/projects", icon: FolderKanban },
+    ]
+  },
+  {
+    title: "YÖNETİM",
+    items: [
+      { name: "Kullanıcılar", href: "/users", icon: Users },
+    ]
+  },
+  {
+    title: "SİSTEM AYARLARI",
+    items: [
+      { name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers },
+      { name: "İş Kalemleri", href: "/setup/workitems", icon: Package },
+      { name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield },
+      { name: "Firma Ayarları", href: "/setup/settings", icon: Building2 },
+    ]
+  }
 ];
 
 const NavItem = ({ item, onClick, collapsed }) => {
@@ -117,12 +131,12 @@ const NavItem = ({ item, onClick, collapsed }) => {
   );
 };
 
-const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse }) => {
-  const [setupOpen, setSetupOpen] = useState(true);
-
-  const logoUrl = isDark ? tenant?.dark_logo_url : tenant?.light_logo_url;
-  const fallbackLogo = isDark ? tenant?.light_logo_url : tenant?.dark_logo_url;
-  const displayLogo = logoUrl || fallbackLogo;
+const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user, pendingTasks }) => {
+  
+  // Logo Mantığı: Koyu modda dark logo varsa onu kullan, yoksa light logoyu kullan (fallback).
+  const logoUrl = isDark && tenant?.dark_logo_url 
+    ? tenant.dark_logo_url 
+    : (tenant?.light_logo_url || null);
 
   const getCompanyInitials = (name) => {
     if (!name) return "CF";
@@ -134,31 +148,17 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse }) =>
       .slice(0, 2);
   };
 
-  const setupButton = (
-    <button
-      onClick={() => setSetupOpen(!setupOpen)}
-      className={cn(
-        "flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200",
-        collapsed ? "justify-center" : "justify-between"
-      )}
-    >
-      <span className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-        <Settings className="h-5 w-5 shrink-0" />
-        {!collapsed && "Kurulum"}
-      </span>
-      {!collapsed && (
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 transition-transform duration-300",
-            setupOpen && "rotate-180"
-          )}
-        />
-      )}
-    </button>
-  );
+  const getInitials = (name) => {
+    return name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  };
+
+  const getAvatarUrl = () => {
+    if (!user?.avatar_url) return null;
+    return user.avatar_url.startsWith("http") ? user.avatar_url : BACKEND_URL + user.avatar_url;
+  };
 
   return (
-    <div className="flex h-full flex-col gap-2 relative">
+    <div className="flex h-full flex-col gap-2 relative bg-background border-r">
       {/* Toggle Button */}
       <Button
         variant="ghost"
@@ -174,44 +174,38 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse }) =>
       </Button>
 
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-6">
+      <div className="flex h-16 items-center border-b px-6 shrink-0">
         <div className={cn(
           "flex items-center gap-3 transition-all duration-700",
           collapsed && "justify-center w-full"
         )}>
-          {displayLogo && !collapsed ? (
+          {logoUrl && !collapsed ? (
             <img 
-              src={displayLogo} 
+              src={logoUrl} 
               alt={tenant?.name || "Logo"} 
               className="h-10 max-w-[180px] w-auto object-contain transition-all duration-700"
               style={{ maxHeight: '40px' }}
-              onError={(e) => {
-                e.target.style.display = 'none';
-                const fallbackDiv = e.target.nextSibling;
-                if (fallbackDiv) fallbackDiv.style.display = 'flex';
-              }}
             />
-          ) : null}
-          
-          <div 
-            className={cn(
-              "h-10 w-10 rounded-lg bg-primary flex items-center justify-center shrink-0 transition-all duration-700",
-              displayLogo && !collapsed && "hidden"
-            )}
-            style={{ display: (displayLogo && !collapsed) ? 'none' : 'flex' }}
-          >
-            <span className="text-base font-bold text-primary-foreground">
-              {getCompanyInitials(tenant?.name)}
-            </span>
-          </div>
-          
-          {!collapsed && (
-            <span className={cn(
-              "font-semibold text-base tracking-tight truncate max-w-[130px] transition-all duration-700",
-              displayLogo && "hidden"
-            )}>
-              {tenant?.name || "CraftForge"}
-            </span>
+          ) : (
+            <>
+              {/* Logo yoksa veya collapsed ise baş harfler */}
+              <div 
+                className={cn(
+                  "h-10 w-10 rounded-lg bg-primary flex items-center justify-center shrink-0 transition-all duration-700",
+                  logoUrl && !collapsed && "hidden"
+                )}
+              >
+                <span className="text-base font-bold text-primary-foreground">
+                  {getCompanyInitials(tenant?.name)}
+                </span>
+              </div>
+              
+              {!collapsed && !logoUrl && (
+                <span className="font-semibold text-base tracking-tight truncate max-w-[130px]">
+                  {tenant?.name || "CraftForge"}
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -219,37 +213,70 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse }) =>
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
-          {navigation.map((item) => (
-            <NavItem key={item.href} item={item} onClick={onNavClick} collapsed={collapsed} />
-          ))}
-
-          {/* Setup Section */}
-          <div className="mt-6">
-            {collapsed ? (
-              <TooltipProvider delayDuration={100}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    {setupButton}
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
-                    Kurulum
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              setupButton
-            )}
-
-            {setupOpen && !collapsed && (
-              <div className="mt-1 ml-4 flex flex-col gap-1 border-l pl-4 transition-all duration-500">
-                {setupNavigation.map((item) => (
-                  <NavItem key={item.href} item={item} onClick={onNavClick} collapsed={false} />
+          {navGroups.map((group, index) => (
+            <div key={index} className="mb-4 last:mb-0">
+              {/* Grup Başlığı */}
+              {!collapsed && (
+                <h4 className="text-[11px] uppercase font-bold text-muted-foreground/70 tracking-wider mb-2 px-3 mt-2">
+                  {group.title}
+                </h4>
+              )}
+              {collapsed && index > 0 && <div className="my-2 border-t border-border/40 mx-2" />}
+              
+              {/* Grup Linkleri */}
+              <div className="flex flex-col gap-1">
+                {group.items.map((item) => (
+                  <NavItem key={item.href} item={item} onClick={onNavClick} collapsed={collapsed} />
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          ))}
         </nav>
       </ScrollArea>
+
+      {/* USER FOOTER SECTION */}
+      <div className="p-3 mt-auto border-t bg-muted/10">
+          <NavLink 
+            to="/profile"
+            onClick={onNavClick}
+            className={cn(
+              "flex items-center gap-3 rounded-xl p-2 transition-all hover:bg-muted/80 cursor-pointer group border border-transparent hover:border-border",
+              collapsed && "justify-center"
+            )}
+          >
+             <div className="relative shrink-0">
+               <Avatar className="h-10 w-10 border-2 border-background shadow-sm group-hover:border-primary/20 transition-colors">
+                 <AvatarImage src={getAvatarUrl()} className="object-cover" />
+                 <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                    {getInitials(user?.full_name)}
+                 </AvatarFallback>
+               </Avatar>
+               {/* Online/Status Indicator */}
+               <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-background"></span>
+               </span>
+             </div>
+             
+             {!collapsed && (
+               <div className="flex flex-col overflow-hidden transition-all duration-300 min-w-0">
+                 <span className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors">
+                    {user?.full_name}
+                 </span>
+                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate mt-0.5">
+                   <Briefcase className="h-3 w-3" />
+                   <span className="truncate">
+                     {pendingTasks > 0 ? (
+                       <span className="text-amber-600 font-medium">{pendingTasks} Görev Bekliyor</span>
+                     ) : (
+                       <span className="text-emerald-600">Her şey yolunda</span>
+                     )}
+                   </span>
+                 </div>
+               </div>
+             )}
+          </NavLink>
+       </div>
     </div>
   );
 };
@@ -364,19 +391,30 @@ export default function DashboardLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tenant, setTenant] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [pendingTaskCount, setPendingTaskCount] = useState(0);
 
-  const fetchTenant = async () => {
+  const fetchData = async () => {
     try {
-      const response = await axios.get(`${API_URL}/tenant`);
-      setTenant(response.data);
+      const [tenantRes, tasksRes] = await Promise.all([
+        axios.get(`${API_URL}/tenant`),
+        axios.get(`${API_URL}/tasks/me`) // Kullanıcının görevlerini çek
+      ]);
+      setTenant(tenantRes.data);
+      
+      // Tamamlanmamış görev sayısını hesapla
+      const pending = tasksRes.data.filter(t => t.status !== 'tamamlandi').length;
+      setPendingTaskCount(pending);
     } catch (error) {
-      console.error("Failed to fetch tenant:", error);
+      console.error("Layout data fetch error:", error);
     }
   };
 
   useEffect(() => {
-    fetchTenant();
-  }, []);
+    fetchData();
+    // Periyodik olarak güncellemek istersen:
+    // const interval = setInterval(fetchData, 60000);
+    // return () => clearInterval(interval);
+  }, []); // Bağımlılık dizisi boş, sayfa yüklendiğinde çalışır. Route değişiminde tetiklenmesi için [location.pathname] eklenebilir.
 
   const handleLogout = () => {
     logout();
@@ -409,6 +447,8 @@ export default function DashboardLayout() {
           isDark={isDark} 
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          user={user}
+          pendingTasks={pendingTaskCount}
         />
       </aside>
 
@@ -426,6 +466,8 @@ export default function DashboardLayout() {
               tenant={tenant} 
               isDark={isDark}
               collapsed={false}
+              user={user}
+              pendingTasks={pendingTaskCount}
             />
           </SheetContent>
         </Sheet>

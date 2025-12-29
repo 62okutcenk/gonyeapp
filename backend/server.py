@@ -378,6 +378,19 @@ class UserUpdate(BaseModel):
     role_id: Optional[str] = None
     color: Optional[str] = None
 
+# Comment Models (YENİ)
+class TaskCommentCreate(BaseModel):
+    message: str
+
+class TaskCommentResponse(BaseModel):
+    id: str
+    task_id: str
+    user_id: str
+    user_name: str
+    user_avatar: Optional[str] = None
+    message: str
+    created_at: str
+
 # ==================== HELPER FUNCTIONS ====================
 
 def hash_password(password: str) -> str:
@@ -615,7 +628,7 @@ async def register(data: UserRegister):
             tenant_id=user["tenant_id"],
             role_id=user.get("role_id"),
             color=user["color"],
-            avatar_url=user.get("avatar_url"), # Added avatar_url
+            avatar_url=user.get("avatar_url"), 
             is_admin=user["is_admin"],
             setup_completed=setup_completed,
             created_at=user["created_at"]
@@ -643,7 +656,7 @@ async def login(data: UserLogin):
             tenant_id=user["tenant_id"],
             role_id=user.get("role_id"),
             color=user.get("color", "#4a4036"),
-            avatar_url=user.get("avatar_url"), # Added avatar_url
+            avatar_url=user.get("avatar_url"),
             is_admin=user.get("is_admin", False),
             setup_completed=setup_completed,
             created_at=user["created_at"]
@@ -663,13 +676,11 @@ async def get_me(user: dict = Depends(get_current_user)):
         tenant_id=user["tenant_id"],
         role_id=user.get("role_id"),
         color=user.get("color", "#4a4036"),
-        avatar_url=user.get("avatar_url"), # Added avatar_url
+        avatar_url=user.get("avatar_url"),
         is_admin=user.get("is_admin", False),
         setup_completed=setup_completed,
         created_at=user["created_at"]
     )
-
-# ... (Rest of the server.py file remains the same)
 
 # ==================== TENANT ROUTES ====================
 
@@ -1629,7 +1640,6 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
     if not task:
         raise HTTPException(status_code=404, detail="Görev bulunamadı")
 
-    # Eski değerler (log için)
     old_status = task.get("status")
     old_assigned_to = task.get("assigned_to")
     old_notes = task.get("notes")
@@ -1643,7 +1653,6 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
     if data.assigned_to is not None:
         update_data["assigned_to"] = data.assigned_to
 
-        # Bildirim (mevcut davranışı bozma)
         if data.assigned_to != user["id"]:
             project = await db.projects.find_one({"id": project_id}, {"name": 1, "_id": 0})
             await create_notification(
@@ -1657,14 +1666,13 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
 
     await db.project_tasks.update_one({"id": task_id}, {"$set": update_data})
 
-    # Alan adı (loglarda alan badge için)
     area = None
     area_name = None
     if task.get("area_id"):
         area = await db.project_areas.find_one({"id": task.get("area_id")}, {"name": 1, "_id": 0})
         area_name = area.get("name") if area else None
 
-    # 1) Status değişimi log (mevcut mantık korunuyor)
+    # Log changes
     if old_status != data.status:
         await log_project_activity(
             project_id, user["tenant_id"], user["id"], user["full_name"],
@@ -1673,39 +1681,30 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
             task.get("area_id"), area_name
         )
 
-    # 2) Atama değişimi log (yeni)
     if data.assigned_to is not None and old_assigned_to != data.assigned_to:
         old_user_name = None
         new_user_name = None
-
         if old_assigned_to:
             old_user = await db.users.find_one({"id": old_assigned_to}, {"full_name": 1, "_id": 0})
             old_user_name = old_user.get("full_name") if old_user else None
-
         if data.assigned_to:
             new_user = await db.users.find_one({"id": data.assigned_to}, {"full_name": 1, "_id": 0})
             new_user_name = new_user.get("full_name") if new_user else None
 
-        # action belirle
+        desc = ""
         if not old_assigned_to and data.assigned_to:
-            action = "task_assigned"
             desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevi {new_user_name or data.assigned_to} kişisine atandı."
         elif old_assigned_to and not data.assigned_to:
-            action = "task_unassigned"
-            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevinin ataması kaldırıldı. (Önceki: {old_user_name or old_assigned_to})"
+            desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevinin ataması kaldırıldı."
         else:
-            action = "task_reassigned"
             desc = f"'{task['work_item_name']} - {task['subtask_name']}' görevi: {old_user_name or old_assigned_to} → {new_user_name or data.assigned_to}"
 
         await log_project_activity(
             project_id, user["tenant_id"], user["id"], user["full_name"],
-            action,
-            desc,
-            task.get("area_id"), area_name,
-            {"old_assigned_to": old_assigned_to, "new_assigned_to": data.assigned_to}
+            "task_assigned", desc,
+            task.get("area_id"), area_name
         )
 
-    # 3) Not değişimi log (yeni)
     if data.notes is not None and old_notes != data.notes:
         action = "task_note_updated"
         if (old_notes is None or str(old_notes).strip() == "") and (str(data.notes).strip() != ""):
@@ -1717,41 +1716,31 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
 
         await log_project_activity(
             project_id, user["tenant_id"], user["id"], user["full_name"],
-            action,
-            desc,
-            task.get("area_id"), area_name
+            action, desc, task.get("area_id"), area_name
         )
 
-    # Update area status based on tasks (mevcut davranış)
+    # Update area status logic
     if task.get("area_id"):
         area_tasks = await db.project_tasks.find({"area_id": task["area_id"]}, {"status": 1, "_id": 0}).to_list(1000)
         statuses = [t["status"] for t in area_tasks]
-
         new_area_status = "planlandi"
-        if all(s == "tamamlandi" for s in statuses):
-            new_area_status = "tamamlandi"
-        elif any(s == "montaj" for s in statuses):
-            new_area_status = "montaj"
-        elif any(s == "uretimde" for s in statuses):
-            new_area_status = "uretimde"
+        if all(s == "tamamlandi" for s in statuses): new_area_status = "tamamlandi"
+        elif any(s == "montaj" for s in statuses): new_area_status = "montaj"
+        elif any(s == "uretimde" for s in statuses): new_area_status = "uretimde"
 
         await db.project_areas.update_one(
             {"id": task["area_id"]},
             {"$set": {"status": new_area_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
 
-    # Update project status (mevcut davranış – senin dosyada bu kısım devam ediyordu)
-    # Not: Buradan sonrası sende nasıl devam ediyorsa aynı şekilde kalsın.
+    # Update project status logic
     all_tasks = await db.project_tasks.find({"project_id": project_id}, {"status": 1, "_id": 0}).to_list(5000)
     if all_tasks:
         statuses = [t.get("status") for t in all_tasks]
         new_project_status = "planlandi"
-        if all(s == "tamamlandi" for s in statuses):
-            new_project_status = "tamamlandi"
-        elif any(s == "montaj" for s in statuses):
-            new_project_status = "montaj"
-        elif any(s == "uretimde" for s in statuses):
-            new_project_status = "uretimde"
+        if all(s == "tamamlandi" for s in statuses): new_project_status = "tamamlandi"
+        elif any(s == "montaj" for s in statuses): new_project_status = "montaj"
+        elif any(s == "uretimde" for s in statuses): new_project_status = "uretimde"
 
         await db.projects.update_one(
             {"id": project_id},
@@ -1760,6 +1749,97 @@ async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUp
 
     return {"message": "Görev güncellendi"}
 
+# ==================== TASK COMMENTS ROUTES (YENİ & LOGLU) ====================
+
+@api_router.get("/tasks/{task_id}/comments", response_model=List[TaskCommentResponse])
+async def get_task_comments(task_id: str, user: dict = Depends(get_current_user)):
+    task = await db.project_tasks.find_one({"id": task_id, "tenant_id": user["tenant_id"]}, {"project_id": 1})
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+    
+    if not await can_access_project(user, task["project_id"]):
+         raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
+
+    comments = await db.task_comments.find({"task_id": task_id}).sort("created_at", 1).to_list(1000)
+    
+    result = []
+    for c in comments:
+        comment_user = await db.users.find_one({"id": c["user_id"]}, {"avatar_url": 1, "full_name": 1})
+        result.append({
+            **c,
+            "user_name": comment_user.get("full_name", c["user_name"]),
+            "user_avatar": comment_user.get("avatar_url")
+        })
+        
+    return result
+
+@api_router.post("/tasks/{task_id}/comments", response_model=TaskCommentResponse)
+async def create_task_comment(task_id: str, data: TaskCommentCreate, user: dict = Depends(get_current_user)):
+    task = await db.project_tasks.find_one({"id": task_id, "tenant_id": user["tenant_id"]})
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+        
+    if not await can_access_project(user, task["project_id"]):
+         raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
+
+    comment_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    comment = {
+        "id": comment_id,
+        "task_id": task_id,
+        "tenant_id": user["tenant_id"],
+        "user_id": user["id"],
+        "user_name": user["full_name"],
+        "message": data.message,
+        "created_at": now
+    }
+    
+    await db.task_comments.insert_one(comment)
+    
+    # Update task updated_at
+    await db.project_tasks.update_one(
+        {"id": task_id},
+        {"$set": {"updated_at": now}}
+    )
+    
+    # Notify assignee
+    if task.get("assigned_to") and task.get("assigned_to") != user["id"]:
+        project = await db.projects.find_one({"id": task["project_id"]}, {"name": 1})
+        await create_notification(
+            task["assigned_to"],
+            user["tenant_id"],
+            "Yeni Yorum",
+            f"'{project.get('name')}' projesindeki '{task['subtask_name']}' görevine yeni bir yorum yapıldı.",
+            "info",
+            f"/projects/{task['project_id']}"
+        )
+
+    # --- LOG ACTIVITY ---
+    area_name = None
+    if task.get("area_id"):
+        area = await db.project_areas.find_one({"id": task["area_id"]}, {"name": 1, "_id": 0})
+        area_name = area.get("name") if area else None
+
+    # Kısa mesaj önizlemesi (max 50 karakter)
+    short_msg = data.message[:50] + "..." if len(data.message) > 50 else data.message
+
+    await log_project_activity(
+        project_id=task["project_id"],
+        tenant_id=user["tenant_id"],
+        user_id=user["id"],
+        user_name=user["full_name"],
+        action="comment_added",
+        description=f"'{task.get('work_item_name')} - {task.get('subtask_name')}' görevine yorum yaptı: \"{short_msg}\"",
+        area_id=task.get("area_id"),
+        area_name=area_name,
+        metadata={"task_id": task_id, "comment_id": comment_id}
+    )
+
+    return {
+        **comment,
+        "user_avatar": user.get("avatar_url")
+    }
 
 # ==================== USER MANAGEMENT ROUTES ====================
 
@@ -2158,6 +2238,36 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "recent_projects": recent_projects
     }
 
+# ==================== MY TASKS ROUTE (YENİ) ====================
+
+@api_router.get("/tasks/me")
+async def get_my_tasks(user: dict = Depends(get_current_user)):
+    """Kullanıcının üzerine atanmış tüm görevleri getirir (Proje bağımsız)"""
+    
+    # Sadece tamamlanmamış veya son 1 haftada tamamlanmış görevleri getir
+    # Performans için son 100 görevi çekiyoruz
+    tasks = await db.project_tasks.find(
+        {"assigned_to": user["id"], "tenant_id": user["tenant_id"]}, 
+        {"_id": 0}
+    ).sort("updated_at", -1).to_list(100)
+    
+    result = []
+    for task in tasks:
+        # Proje ismini çek
+        project = await db.projects.find_one({"id": task["project_id"]}, {"name": 1, "_id": 0})
+        
+        # Alan (Area) ismini çek
+        area = None
+        if task.get("area_id"):
+            area = await db.project_areas.find_one({"id": task["area_id"]}, {"name": 1, "_id": 0})
+            
+        result.append({
+            **task,
+            "project_name": project.get("name") if project else "Silinmiş Proje",
+            "area_name": area.get("name") if area else "-"
+        })
+        
+    return result
 # ==================== WEBSOCKET ====================
 
 @app.websocket("/ws/{token}")

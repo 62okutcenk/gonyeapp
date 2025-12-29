@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const colorOptions = [
   { value: "#4a4036", label: "Industrial Timber" },
@@ -197,6 +198,13 @@ export default function UsersPage() {
     return role?.name || "Rol atanmamış";
   };
 
+  const getAvatarUrl = (user) => {
+    if (!user.avatar_url) return null;
+    return user.avatar_url.startsWith("http") 
+      ? user.avatar_url 
+      : `${BACKEND_URL}${user.avatar_url}`;
+  };
+
   const filteredUsers = users.filter(
     (user) =>
       user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -275,6 +283,7 @@ export default function UsersPage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
+                          <AvatarImage src={getAvatarUrl(user)} className="object-cover" />
                           <AvatarFallback
                             style={{ backgroundColor: user.color }}
                             className="text-white"

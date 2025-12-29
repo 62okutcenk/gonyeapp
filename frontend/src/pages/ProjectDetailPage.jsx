@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/utils/formatters";
-import { useAuth } from "@/contexts/AuthContext"; // Auth context eklendi
+import { useAuth } from "@/contexts/AuthContext";
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Avatar eklendi
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -97,6 +97,9 @@ import {
   CalendarDays,
   CreditCard,
   Download,
+  Send,
+  Loader2,
+  X
 } from "lucide-react";
 
 import * as XLSX from "xlsx";
@@ -217,6 +220,13 @@ export default function ProjectDetailPage() {
   const [deletePaymentId, setDeletePaymentId] = useState(null);
   const [deleteAssignmentId, setDeleteAssignmentId] = useState(null);
 
+  // Comments State
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [sendingComment, setSendingComment] = useState(false);
+  const commentsEndRef = useRef(null);
+
   // Forms
   const [paymentForm, setPaymentForm] = useState({
     area_id: "",
@@ -248,6 +258,20 @@ export default function ProjectDetailPage() {
     if (projectId) fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Drawer açıldığında yorumları çek
+  useEffect(() => {
+    if (activeTask && taskDrawerOpen) {
+      fetchComments(activeTask.id);
+    }
+  }, [activeTask, taskDrawerOpen]);
+
+  // Yorumlar yüklendiğinde en alta kaydır
+  useEffect(() => {
+    if (commentsEndRef.current) {
+      commentsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [comments]);
 
   const fetchAll = async () => {
     try {
@@ -289,10 +313,9 @@ export default function ProjectDetailPage() {
     return u.avatar_url.startsWith("http") ? u.avatar_url : BACKEND_URL + u.avatar_url;
   };
 
-  // Helper to get User Color
-  const getUserColor = (userId) => {
-     const u = users.find(x => x.id === userId);
-     return u?.color || "#4a4036";
+  const getAssigneeName = (userId) => {
+    const u = users.find(x => x.id === userId);
+    return u?.full_name || "Bilinmiyor";
   };
 
   // Computed Values
@@ -377,6 +400,7 @@ export default function ProjectDetailPage() {
       uploading: false,
       saving: false,
     });
+    setComments([]); // Clear previous comments
     setTaskDrawerOpen(true);
   };
 
@@ -436,6 +460,16 @@ export default function ProjectDetailPage() {
         assigned_to: taskEdit.assigned_to === "unassigned" ? null : taskEdit.assigned_to,
       });
       toast.success("İş kalemi güncellendi");
+      
+      // Update local state to reflect changes immediately
+      setActiveTask(prev => ({ 
+          ...prev, 
+          status: taskEdit.status, 
+          notes: taskEdit.notes,
+          assigned_to: taskEdit.assigned_to === "unassigned" ? null : taskEdit.assigned_to,
+          assigned_to_name: taskEdit.assigned_to === "unassigned" ? null : getAssigneeName(taskEdit.assigned_to)
+      }));
+
       await Promise.all([fetchTasks(), fetchActivities(), fetchProject()]);
     } catch { toast.error("Hata oluştu"); } finally { setTaskEdit((s) => ({ ...s, saving: false })); }
   };
@@ -454,6 +488,40 @@ export default function ProjectDetailPage() {
       setTaskEdit((s) => ({ ...s, file: null }));
       await Promise.all([fetchFiles(), fetchActivities()]);
     } catch { toast.error("Hata oluştu"); } finally { setTaskEdit((s) => ({ ...s, uploading: false })); }
+  };
+
+  // --- Comment Functions ---
+  const fetchComments = async (taskId) => {
+    setLoadingComments(true);
+    try {
+      const res = await axios.get(`${API_URL}/tasks/${taskId}/comments`);
+      setComments(res.data || []);
+    } catch (error) {
+      console.error("Yorumlar yüklenemedi", error);
+      setComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleSendComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !activeTask) return;
+
+    setSendingComment(true);
+    try {
+      const res = await axios.post(`${API_URL}/tasks/${activeTask.id}/comments`, {
+        message: newComment
+      });
+      
+      setComments([...comments, res.data]);
+      setNewComment("");
+      toast.success("Yorum gönderildi");
+    } catch (error) {
+      toast.error("Yorum gönderilemedi");
+    } finally {
+      setSendingComment(false);
+    }
   };
 
   // Exports
@@ -565,9 +633,9 @@ export default function ProjectDetailPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 items-end sm:items-center">
-                     {/* Avatar Group & Team Trigger */}
-                     <div className="flex items-center gap-2 mr-2">
-                         <div className="flex -space-x-3 items-center">
+                      {/* Avatar Group & Team Trigger */}
+                      <div className="flex items-center gap-2 mr-2">
+                          <div className="flex -space-x-3 items-center">
                             {assignedAvatars.slice(0, 4).map((a) => (
                                 <Avatar key={a.id} className="h-10 w-10 border-2 border-slate-900 cursor-pointer shadow-sm hover:scale-105 transition-transform" title={a.user_name}>
                                     <AvatarImage src={getUserAvatarUrl(a.user_id)} className="object-cover" />
@@ -581,24 +649,24 @@ export default function ProjectDetailPage() {
                                     +{assignedAvatars.length - 4}
                                 </div>
                             )}
-                         </div>
-                         <button 
+                          </div>
+                          <button 
                              onClick={() => setTeamDialog(true)}
                              className="h-10 w-10 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center text-white transition-colors shadow-lg border-2 border-slate-900 z-10"
                              title="Ekibi Yönet / Yeni Ekle"
-                         >
-                            <Users className="h-5 w-5" />
-                         </button>
-                     </div>
-                     
-                     <div className="flex gap-2">
-                         <Button variant="secondary" className="bg-white text-slate-900 hover:bg-slate-100 border-0" onClick={exportExcel}>
-                            <Wallet className="mr-2 h-4 w-4 text-emerald-600" /> Excel
-                         </Button>
-                         <Button variant="secondary" className="bg-white/10 text-white hover:bg-white/20 border-0 backdrop-blur-sm" onClick={exportPDF}>
-                            <FileText className="h-4 w-4" />
-                         </Button>
-                     </div>
+                          >
+                             <Users className="h-5 w-5" />
+                          </button>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                          <Button variant="secondary" className="bg-white text-slate-900 hover:bg-slate-100 border-0" onClick={exportExcel}>
+                             <Wallet className="mr-2 h-4 w-4 text-emerald-600" /> Excel
+                          </Button>
+                          <Button variant="secondary" className="bg-white/10 text-white hover:bg-white/20 border-0 backdrop-blur-sm" onClick={exportPDF}>
+                             <FileText className="h-4 w-4" />
+                          </Button>
+                      </div>
                 </div>
             </div>
         </div>
@@ -716,7 +784,7 @@ export default function ProjectDetailPage() {
                                                                 </Avatar>
                                                                 {/* Tiny Action Icon Badge */}
                                                                 <div className={cn("absolute -bottom-1 -right-1 h-4 w-4 rounded-full border border-white dark:border-slate-900 flex items-center justify-center text-[8px]", color)}>
-                                                                    <AIcon className="h-2 w-2" />
+                                                                        <AIcon className="h-2 w-2" />
                                                                 </div>
                                                             </div>
 
@@ -729,7 +797,7 @@ export default function ProjectDetailPage() {
                                                                 
                                                                 {detail && (
                                                                     <div className="mt-1 p-2 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md text-xs text-slate-500 dark:text-slate-400 shadow-sm break-all">
-                                                                        {detail}
+                                                                            {detail}
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -765,15 +833,15 @@ export default function ProjectDetailPage() {
                                 </div>
                                 {selectedProcessArea && (
                                     <div className="text-right flex items-center gap-4 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
-                                        <div className="text-right">
-                                            <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{calcProgressFromTasks(processAreaTasks)}%</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">Alan İlerlemesi</div>
-                                        </div>
-                                        <div className="h-10 w-10">
-                                             <div className="relative h-full w-full rounded-full border-4 border-slate-100 dark:border-slate-700 flex items-center justify-center">
-                                                 <div className="absolute top-0 left-0 h-full w-full rounded-full border-4 border-indigo-500 border-t-transparent animate-spin-slow" style={{ animationDuration: '0s', transform: `rotate(${calcProgressFromTasks(processAreaTasks) * 3.6}deg)` }}></div>
-                                             </div>
-                                        </div>
+                                            <div className="text-right">
+                                                <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{calcProgressFromTasks(processAreaTasks)}%</div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">Alan İlerlemesi</div>
+                                            </div>
+                                            <div className="h-10 w-10">
+                                                 <div className="relative h-full w-full rounded-full border-4 border-slate-100 dark:border-slate-700 flex items-center justify-center">
+                                                     <div className="absolute top-0 left-0 h-full w-full rounded-full border-4 border-indigo-500 border-t-transparent animate-spin-slow" style={{ animationDuration: '0s', transform: `rotate(${calcProgressFromTasks(processAreaTasks) * 3.6}deg)` }}></div>
+                                                 </div>
+                                            </div>
                                     </div>
                                 )}
                              </div>
@@ -1199,6 +1267,10 @@ export default function ProjectDetailPage() {
                             <Box className="h-3 w-3" /> {selectedProcessArea?.name} / {activeTask?.subtask_name}
                         </div>
                     </div>
+                    <SheetClose className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Kapat</span>
+                    </SheetClose>
                 </div>
             </div>
 
@@ -1246,17 +1318,19 @@ export default function ProjectDetailPage() {
                     </div>
                     
                     <div className="space-y-2">
-                        <label className="text-xs font-medium text-slate-700 dark:text-slate-300">Notlar</label>
+                        <label className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <PenLine className="h-3 w-3" /> Görev Açıklaması / Teknik Notlar
+                        </label>
                         <Textarea 
                             className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 resize-none min-h-[100px]" 
-                            placeholder="Bu görevle ilgili notlar..." 
+                            placeholder="Bu görevle ilgili teknik detaylar..." 
                             value={taskEdit.notes} 
                             onChange={(e) => setTaskEdit((s) => ({ ...s, notes: e.target.value }))}
                         />
                     </div>
                     
-                    <Button onClick={saveTaskChanges} disabled={taskEdit.saving} className="w-full">
-                        {taskEdit.saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+                    <Button onClick={saveTaskChanges} disabled={taskEdit.saving} variant="outline" size="sm" className="w-full h-8 text-xs">
+                        {taskEdit.saving ? "Kaydediliyor..." : "Teknik Notları Kaydet"}
                     </Button>
                 </div>
 
@@ -1301,9 +1375,88 @@ export default function ProjectDetailPage() {
                         )}
                     </div>
                 </div>
+
+                <Separator className="dark:bg-slate-800" />
+
+                {/* COMMENTS SECTION */}
+                <div className="space-y-4 pb-4">
+                    <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" /> Yorumlar & Hareketler
+                    </h3>
+
+                    {loadingComments ? (
+                        <div className="flex justify-center py-4">
+                            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                        </div>
+                    ) : comments.length === 0 ? (
+                        <div className="text-center py-8 bg-slate-50/50 dark:bg-slate-900/30 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Henüz yorum yapılmamış.</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">İlk yorumu siz ekleyin.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {comments.map((comment) => (
+                                <div key={comment.id} className="flex gap-3 group">
+                                    <Avatar className="h-8 w-8 border border-slate-200 dark:border-slate-700 mt-1 shrink-0">
+                                        <AvatarImage src={getUserAvatarUrl(comment.user_id)} className="object-cover" />
+                                        <AvatarFallback className="text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                                            {getInitials(comment.user_name)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">{comment.user_name}</span>
+                                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                                {new Date(comment.created_at).toLocaleString('tr-TR', { 
+                                                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+                                                })}
+                                            </span>
+                                        </div>
+                                        <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg rounded-tl-none text-sm text-slate-700 dark:text-slate-300 leading-relaxed hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors break-words">
+                                            {comment.message}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={commentsEndRef} />
+                        </div>
+                    )}
+                </div>
             </div>
-            <div className="p-4 border-t bg-white dark:bg-slate-900 dark:border-slate-800">
-                <SheetClose asChild><Button variant="outline" className="w-full dark:bg-slate-800 dark:text-white dark:border-slate-700">Pencereyi Kapat</Button></SheetClose>
+
+            {/* Comment Input Footer */}
+            <div className="p-4 border-t bg-white dark:bg-slate-900 dark:border-slate-800 sticky bottom-0 z-10">
+                <form onSubmit={handleSendComment} className="flex items-end gap-2">
+                    <div className="relative flex-1">
+                        <Textarea
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Yorum yazın..."
+                            className="min-h-[44px] max-h-[120px] resize-none pr-10 py-3 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 transition-colors rounded-xl"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendComment(e);
+                                }
+                            }}
+                        />
+                    </div>
+                    <Button 
+                        type="submit" 
+                        size="icon" 
+                        disabled={sendingComment || !newComment.trim()}
+                        className={cn(
+                            "h-11 w-11 rounded-xl shrink-0 transition-all",
+                            newComment.trim() ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                        )}
+                    >
+                        {sendingComment ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                            <Send className="h-5 w-5" />
+                        )}
+                    </Button>
+                </form>
             </div>
         </SheetContent>
       </Sheet>
