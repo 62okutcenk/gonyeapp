@@ -2009,6 +2009,19 @@ async def create_project_payment(project_id: str, data: ProjectPaymentCreate, us
         {"amount": data.amount, "method": data.payment_method}
     )
     
+    # Send notification to project team about payment
+    project = await db.projects.find_one({"id": project_id}, {"name": 1, "_id": 0})
+    project_name = project.get("name", "Proje") if project else "Proje"
+    
+    await notify_project_team(
+        project_id, user["tenant_id"],
+        "💰 Yeni Tahsilat",
+        f"'{project_name}' projesi için {data.amount:,.0f} ₺ tahsilat kaydedildi.",
+        "success",
+        f"/projects/{project_id}",
+        exclude_user_id=user["id"]
+    )
+    
     return {
         **payment,
         "area_name": area["name"],
