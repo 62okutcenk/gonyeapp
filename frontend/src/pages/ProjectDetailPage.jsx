@@ -795,6 +795,40 @@ export default function ProjectDetailPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-12 relative z-20">
+        {/* Locked Project Banner */}
+        {projectLockStatus.locked && !projectLockStatus.can_modify && (
+          <div className={cn(
+            "mb-4 p-4 rounded-lg flex items-center gap-3",
+            project?.status === "durduruldu" 
+              ? "bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
+              : "bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+          )}>
+            {project?.status === "durduruldu" ? (
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            ) : (
+              <Lock className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            )}
+            <div>
+              <p className={cn(
+                "font-medium",
+                project?.status === "durduruldu" 
+                  ? "text-amber-800 dark:text-amber-200"
+                  : "text-emerald-800 dark:text-emerald-200"
+              )}>
+                {project?.status === "durduruldu" ? "Bu proje durdurulmuştur" : "Bu proje tamamlanmıştır"}
+              </p>
+              <p className={cn(
+                "text-sm",
+                project?.status === "durduruldu"
+                  ? "text-amber-600 dark:text-amber-300"
+                  : "text-emerald-600 dark:text-emerald-300"
+              )}>
+                {projectLockStatus.reason}
+              </p>
+            </div>
+          </div>
+        )}
+        
         <Card className="shadow-lg border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
             <div className="p-2">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
