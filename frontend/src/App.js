@@ -19,6 +19,8 @@ import SetupSettingsPage from "@/pages/setup/SetupSettingsPage";
 import UsersPage from "@/pages/UsersPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
+import CustomersPage from "@/pages/CustomersPage";
+import CustomerDetailPage from "@/pages/CustomerDetailPage";
 
 // Layout
 import DashboardLayout from "@/components/layout/DashboardLayout";
