@@ -737,6 +737,95 @@ async def update_tenant(data: TenantUpdate, user: dict = Depends(get_current_use
     tenant = await db.tenants.find_one({"id": user["tenant_id"]}, {"_id": 0})
     return TenantResponse(**tenant)
 
+# ==================== SUBSCRIPTION ROUTES ====================
+
+@api_router.get("/subscription/plan")
+async def get_subscription_plan():
+    """Get available subscription plan details"""
+    return {
+        "id": "gonye_plan",
+        "name": "Gönye Planı",
+        "price": 2500.0,
+        "currency": "TRY",
+        "period": "monthly",
+        "period_label": "Aylık",
+        "features": [
+            "Sınırsız proje oluşturma",
+            "Sınırsız kullanıcı ekleme",
+            "Gelişmiş raporlama",
+            "Dosya yönetimi",
+            "Öncelikli destek",
+            "Tüm özellikler dahil"
+        ]
+    }
+
+@api_router.get("/subscription", response_model=SubscriptionResponse)
+async def get_subscription(user: dict = Depends(get_current_user)):
+    """Get current subscription status"""
+    tenant = await db.tenants.find_one({"id": user["tenant_id"]}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Firma bulunamadı")
+    
+    # Calculate days remaining
+    days_remaining = 0
+    if tenant.get("subscription_end"):
+        end_date = datetime.fromisoformat(tenant["subscription_end"].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if end_date > now:
+            days_remaining = (end_date - now).days
+    
+    return SubscriptionResponse(
+        is_active=tenant.get("subscription_active", False),
+        plan_name=tenant.get("subscription_plan"),
+        start_date=tenant.get("subscription_start"),
+        end_date=tenant.get("subscription_end"),
+        days_remaining=days_remaining
+    )
+
+@api_router.post("/subscription/activate", response_model=SubscriptionResponse)
+async def activate_subscription(data: SubscriptionActivate, user: dict = Depends(get_current_user)):
+    """Activate subscription (mock payment processing for development)"""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Yalnızca yöneticiler abonelik işlemi yapabilir")
+    
+    # In production, this would integrate with a payment gateway (iyzico, param, etc.)
+    # For development, we just simulate a successful payment
+    
+    now = datetime.now(timezone.utc)
+    end_date = now + timedelta(days=30)  # Monthly subscription
+    
+    update_data = {
+        "subscription_active": True,
+        "subscription_start": now.isoformat(),
+        "subscription_end": end_date.isoformat(),
+        "subscription_plan": "Gönye Planı"
+    }
+    
+    await db.tenants.update_one(
+        {"id": user["tenant_id"]},
+        {"$set": update_data}
+    )
+    
+    # Log the subscription activation
+    await db.subscription_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "tenant_id": user["tenant_id"],
+        "user_id": user["id"],
+        "action": "activated",
+        "plan": "Gönye Planı",
+        "amount": 2500.0,
+        "card_last_four": data.card_number[-4:] if len(data.card_number) >= 4 else "****",
+        "created_at": now.isoformat()
+    })
+    
+    return SubscriptionResponse(
+        is_active=True,
+        plan_name="Gönye Planı",
+        start_date=now.isoformat(),
+        end_date=end_date.isoformat(),
+        days_remaining=30
+    )
+
 # ==================== ROLE ROUTES ====================
 
 @api_router.get("/roles", response_model=List[RoleResponse])
