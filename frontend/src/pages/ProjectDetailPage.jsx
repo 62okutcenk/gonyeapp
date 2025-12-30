@@ -216,6 +216,13 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   
+  // Project Lock State
+  const [projectLockStatus, setProjectLockStatus] = useState({ locked: false, reason: null, can_modify: true });
+  const [showStopDialog, setShowStopDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [statusChanging, setStatusChanging] = useState(false);
+  
   // Tab Specific States
   const [selectedProcessAreaId, setSelectedProcessAreaId] = useState(null);
   const [selectedFinanceAreaId, setSelectedFinanceAreaId] = useState("all");
