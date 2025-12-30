@@ -1781,6 +1781,11 @@ async def update_project(project_id: str, data: ProjectUpdate, user: dict = Depe
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
+    # Check if status changed
+    old_status = project.get("status")
+    new_status = update_data.get("status")
+    status_changed = new_status and old_status != new_status
+    
     # Log changes
     changes = []
     for key, value in update_data.items():
@@ -1797,6 +1802,32 @@ async def update_project(project_id: str, data: ProjectUpdate, user: dict = Depe
         {"id": project_id, "tenant_id": user["tenant_id"]},
         {"$set": update_data}
     )
+    
+    # Send notifications for status change
+    if status_changed:
+        old_label = PROJECT_STATUS_LABELS.get(old_status, old_status)
+        new_label = PROJECT_STATUS_LABELS.get(new_status, new_status)
+        project_name = project.get("name", "Proje")
+        
+        # Special notification for project completion
+        if new_status == "tamamlandi":
+            await notify_project_team(
+                project_id, user["tenant_id"],
+                "🎉 Proje Tamamlandı!",
+                f"'{project_name}' projesi başarıyla tamamlandı. Tebrikler!",
+                "success",
+                f"/projects/{project_id}",
+                exclude_user_id=user["id"]
+            )
+        else:
+            await notify_project_team(
+                project_id, user["tenant_id"],
+                "📋 Proje Durumu Güncellendi",
+                f"'{project_name}' projesi: {old_label} → {new_label}",
+                "info",
+                f"/projects/{project_id}",
+                exclude_user_id=user["id"]
+            )
     
     return await get_project(project_id, user)
 
