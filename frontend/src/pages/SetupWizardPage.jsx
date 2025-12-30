@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import {
   Building2,
   Package,
-  Shield,
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
@@ -32,9 +31,13 @@ import {
   Phone,
   Mail,
   FileText,
+  CreditCard,
+  Lock,
+  Check,
 } from "lucide-react";
 import { getCities, getDistricts, getTaxOffices } from "@/data/turkeyData";
 import { formatPhoneNumber, formatTaxNumber } from "@/utils/formatters";
+import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
@@ -42,8 +45,105 @@ const steps = [
   { id: 1, title: "Firma Bilgileri", icon: Building2 },
   { id: 2, title: "Logo Ayarları", icon: ImageIcon },
   { id: 3, title: "İş Kalemleri", icon: Package },
-  { id: 4, title: "Tamamlandı", icon: CheckCircle2 },
+  { id: 4, title: "Abonelik", icon: CreditCard },
+  { id: 5, title: "Tamamlandı", icon: CheckCircle2 },
 ];
+
+// Credit Card Visual Component
+const CreditCardVisual = ({ cardData, isFlipped }) => {
+  const formatCardNumber = (number) => {
+    const cleaned = number.replace(/\s/g, '');
+    const groups = cleaned.match(/.{1,4}/g) || [];
+    return groups.join(' ').padEnd(19, '•').replace(/(\s•)+/g, (match) => match.replace(/•/g, ' •'));
+  };
+
+  return (
+    <div className="perspective-1000 w-full max-w-[380px] mx-auto h-[220px]">
+      <div 
+        className={cn(
+          "relative w-full h-full transition-transform duration-700 transform-style-preserve-3d",
+          isFlipped && "rotate-y-180"
+        )}
+        style={{ transformStyle: 'preserve-3d' }}
+      >
+        {/* Front of Card */}
+        <div 
+          className="absolute inset-0 rounded-2xl p-6 text-white shadow-2xl backface-hidden"
+          style={{ 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            backfaceVisibility: 'hidden'
+          }}
+        >
+          {/* Card Chip */}
+          <div className="flex justify-between items-start mb-8">
+            <div className="w-12 h-9 rounded-md bg-gradient-to-br from-yellow-300 to-yellow-500 shadow-inner flex items-center justify-center">
+              <div className="w-8 h-6 border-2 border-yellow-600/30 rounded-sm" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-red-500 opacity-80" />
+              <div className="w-8 h-8 rounded-full bg-orange-400 opacity-80 -ml-4" />
+            </div>
+          </div>
+
+          {/* Card Number */}
+          <div className="mb-6">
+            <p className="text-xl tracking-[0.2em] font-mono">
+              {formatCardNumber(cardData.number || '')}
+            </p>
+          </div>
+
+          {/* Card Holder & Expiry */}
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-white/70 mb-1">Kart Sahibi</p>
+              <p className="text-sm font-medium tracking-wide uppercase">
+                {cardData.holder || 'AD SOYAD'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-white/70 mb-1">Son Kullanma</p>
+              <p className="text-sm font-medium font-mono">
+                {cardData.month || 'AA'}/{cardData.year || 'YY'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Back of Card */}
+        <div 
+          className="absolute inset-0 rounded-2xl text-white shadow-2xl rotate-y-180 backface-hidden"
+          style={{ 
+            background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)'
+          }}
+        >
+          {/* Magnetic Strip */}
+          <div className="w-full h-12 bg-gray-900 mt-6" />
+          
+          {/* CVV Section */}
+          <div className="px-6 mt-6">
+            <div className="flex justify-end">
+              <div className="w-3/4 h-10 bg-white/90 rounded flex items-center justify-end px-4">
+                <span className="text-gray-800 font-mono tracking-widest">
+                  {cardData.cvv || '•••'}
+                </span>
+              </div>
+            </div>
+            <p className="text-right text-[10px] text-white/70 mt-1">CVV</p>
+          </div>
+
+          {/* Bottom Text */}
+          <div className="absolute bottom-6 left-6 right-6">
+            <p className="text-[8px] text-white/50 leading-relaxed">
+              Bu kart sadece görsel amaçlıdır. Gerçek ödeme işlemi için sanal POS entegrasyonu gereklidir.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function SetupWizardPage() {
   const navigate = useNavigate();
@@ -78,10 +178,23 @@ export default function SetupWizardPage() {
   const [workItems, setWorkItems] = useState([]);
   const [newWorkItem, setNewWorkItem] = useState({ name: "", description: "" });
 
+  // Step 4: Payment / Subscription
+  const [subscriptionPlan, setSubscriptionPlan] = useState(null);
+  const [cardData, setCardData] = useState({
+    holder: "",
+    number: "",
+    month: "",
+    year: "",
+    cvv: "",
+  });
+  const [isCardFlipped, setIsCardFlipped] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+
   // Fetch existing data
   useEffect(() => {
     fetchTenantData();
     fetchWorkItems();
+    fetchSubscriptionPlan();
   }, []);
 
   const fetchTenantData = async () => {
@@ -119,6 +232,15 @@ export default function SetupWizardPage() {
       setWorkItems(response.data);
     } catch (error) {
       console.error("Failed to fetch work items:", error);
+    }
+  };
+
+  const fetchSubscriptionPlan = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/subscription/plan`);
+      setSubscriptionPlan(response.data);
+    } catch (error) {
+      console.error("Failed to fetch subscription plan:", error);
     }
   };
 
@@ -216,6 +338,69 @@ export default function SetupWizardPage() {
     }
   };
 
+  // Card input handlers
+  const handleCardNumberChange = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 16);
+    const formatted = cleaned.replace(/(.{4})/g, '$1 ').trim();
+    setCardData((prev) => ({ ...prev, number: formatted }));
+  };
+
+  const handleCardHolderChange = (value) => {
+    const upperValue = value.toUpperCase().replace(/[^A-ZİÜĞÖŞÇ\s]/gi, '');
+    setCardData((prev) => ({ ...prev, holder: upperValue }));
+  };
+
+  const handleExpiryMonthChange = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 2);
+    if (cleaned && parseInt(cleaned) > 12) return;
+    setCardData((prev) => ({ ...prev, month: cleaned }));
+  };
+
+  const handleExpiryYearChange = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 2);
+    setCardData((prev) => ({ ...prev, year: cleaned }));
+  };
+
+  const handleCvvChange = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 4);
+    setCardData((prev) => ({ ...prev, cvv: cleaned }));
+  };
+
+  const isCardValid = () => {
+    return (
+      cardData.holder.trim().length >= 3 &&
+      cardData.number.replace(/\s/g, '').length === 16 &&
+      cardData.month.length === 2 &&
+      cardData.year.length === 2 &&
+      cardData.cvv.length >= 3
+    );
+  };
+
+  const handleProcessPayment = async () => {
+    if (!isCardValid()) {
+      toast.error("Lütfen tüm kart bilgilerini doğru giriniz");
+      return;
+    }
+
+    setProcessingPayment(true);
+    try {
+      await axios.post(`${API_URL}/subscription/activate`, {
+        card_holder_name: cardData.holder,
+        card_number: cardData.number.replace(/\s/g, ''),
+        expiry_month: cardData.month,
+        expiry_year: cardData.year,
+        cvv: cardData.cvv,
+      });
+      
+      toast.success("Aboneliğiniz başarıyla aktifleştirildi!");
+      setCurrentStep(5); // Move to completion step
+    } catch (error) {
+      toast.error("Ödeme işlemi sırasında hata oluştu");
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
   const saveCurrentStep = async () => {
     setSaving(true);
     try {
@@ -234,9 +419,14 @@ export default function SetupWizardPage() {
   };
 
   const handleNext = async () => {
-    const success = await saveCurrentStep();
-    if (success && currentStep < steps.length) {
-      setCurrentStep((prev) => prev + 1);
+    if (currentStep <= 3) {
+      const success = await saveCurrentStep();
+      if (success && currentStep < steps.length) {
+        setCurrentStep((prev) => prev + 1);
+      }
+    } else if (currentStep === 4) {
+      // Payment step - process payment
+      await handleProcessPayment();
     }
   };
 
@@ -247,8 +437,6 @@ export default function SetupWizardPage() {
   };
 
   const handleFinish = async () => {
-    await saveCurrentStep();
-    
     // Mark setup as complete
     try {
       await axios.put(`${API_URL}/tenant`, { setup_completed: true });
@@ -307,7 +495,7 @@ export default function SetupWizardPage() {
                 </div>
                 <span className="hidden sm:inline text-sm font-medium">{step.title}</span>
                 {index < steps.length - 1 && (
-                  <div className="w-8 sm:w-16 h-0.5 bg-muted mx-2" />
+                  <div className="w-8 sm:w-12 h-0.5 bg-muted mx-2" />
                 )}
               </div>
             ))}
@@ -588,7 +776,7 @@ export default function SetupWizardPage() {
                     data-testid="new-workitem-name"
                   />
                 </div>
-                <Button onClick={handleAddWorkItem} data-testid="add-workitem-button">
+                <Button onClick={() => handleAddWorkItem()} data-testid="add-workitem-button">
                   Ekle
                 </Button>
               </div>
@@ -652,8 +840,135 @@ export default function SetupWizardPage() {
           </Card>
         )}
 
-        {/* Step 4: Complete */}
+        {/* Step 4: Subscription / Payment */}
         {currentStep === 4 && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Plan Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Abonelik Planı
+                </CardTitle>
+                <CardDescription>
+                  CraftForge'un tüm özelliklerinden yararlanın
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {subscriptionPlan && (
+                  <>
+                    <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                      <div className="flex items-baseline gap-2 mb-4">
+                        <span className="text-4xl font-bold text-primary">
+                          {subscriptionPlan.price.toLocaleString('tr-TR')}
+                        </span>
+                        <span className="text-xl text-muted-foreground">₺</span>
+                        <span className="text-muted-foreground">/ {subscriptionPlan.period_label}</span>
+                      </div>
+                      <h3 className="text-xl font-semibold mb-4">{subscriptionPlan.name}</h3>
+                      <ul className="space-y-3">
+                        {subscriptionPlan.features.map((feature, idx) => (
+                          <li key={idx} className="flex items-center gap-2 text-sm">
+                            <Check className="h-4 w-4 text-green-500 shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                      <Lock className="h-4 w-4" />
+                      <span>256-bit SSL güvenli ödeme altyapısı</span>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Payment Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Ödeme Bilgileri</CardTitle>
+                <CardDescription>
+                  Kredi kartı bilgilerinizi güvenle girin
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Credit Card Visual */}
+                <CreditCardVisual cardData={cardData} isFlipped={isCardFlipped} />
+
+                {/* Card Form */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cardHolder">Kart Üzerindeki İsim</Label>
+                    <Input
+                      id="cardHolder"
+                      placeholder="AD SOYAD"
+                      value={cardData.holder}
+                      onChange={(e) => handleCardHolderChange(e.target.value)}
+                      className="uppercase"
+                      data-testid="card-holder-input"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cardNumber">Kart Numarası</Label>
+                    <Input
+                      id="cardNumber"
+                      placeholder="0000 0000 0000 0000"
+                      value={cardData.number}
+                      onChange={(e) => handleCardNumberChange(e.target.value)}
+                      maxLength={19}
+                      data-testid="card-number-input"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="expiryMonth">Ay</Label>
+                      <Input
+                        id="expiryMonth"
+                        placeholder="AA"
+                        value={cardData.month}
+                        onChange={(e) => handleExpiryMonthChange(e.target.value)}
+                        maxLength={2}
+                        data-testid="expiry-month-input"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="expiryYear">Yıl</Label>
+                      <Input
+                        id="expiryYear"
+                        placeholder="YY"
+                        value={cardData.year}
+                        onChange={(e) => handleExpiryYearChange(e.target.value)}
+                        maxLength={2}
+                        data-testid="expiry-year-input"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cvv">CVV</Label>
+                      <Input
+                        id="cvv"
+                        placeholder="•••"
+                        value={cardData.cvv}
+                        onChange={(e) => handleCvvChange(e.target.value)}
+                        onFocus={() => setIsCardFlipped(true)}
+                        onBlur={() => setIsCardFlipped(false)}
+                        maxLength={4}
+                        type="password"
+                        data-testid="cvv-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 5: Complete */}
+        {currentStep === 5 && (
           <Card>
             <CardContent className="pt-12 pb-12 text-center">
               <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
@@ -661,7 +976,7 @@ export default function SetupWizardPage() {
               </div>
               <h2 className="text-2xl font-bold mb-2">Kurulum Tamamlandı!</h2>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Firmanız başarıyla yapılandırıldı. Artık projelerinizi oluşturmaya ve yönetmeye başlayabilirsiniz.
+                Firmanız ve aboneliğiniz başarıyla yapılandırıldı. Artık projelerinizi oluşturmaya ve yönetmeye başlayabilirsiniz.
               </p>
               
               <div className="mt-8 p-6 rounded-lg bg-muted/50 max-w-md mx-auto text-left">
@@ -681,6 +996,10 @@ export default function SetupWizardPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    Abonelik aktifleştirildi
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
                     Varsayılan gruplar ve alt görevler hazır
                   </li>
                 </ul>
@@ -694,18 +1013,27 @@ export default function SetupWizardPage() {
           <Button
             variant="outline"
             onClick={handlePrev}
-            disabled={currentStep === 1 || saving}
+            disabled={currentStep === 1 || saving || processingPayment}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Geri
           </Button>
 
-          {currentStep < steps.length ? (
-            <Button onClick={handleNext} disabled={saving} data-testid="next-button">
-              {saving ? (
+          {currentStep < steps.length - 1 ? (
+            <Button 
+              onClick={handleNext} 
+              disabled={saving || processingPayment || (currentStep === 4 && !isCardValid())} 
+              data-testid="next-button"
+            >
+              {saving || processingPayment ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Kaydediliyor...
+                  {currentStep === 4 ? "İşleniyor..." : "Kaydediliyor..."}
+                </>
+              ) : currentStep === 4 ? (
+                <>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Ödemeyi Tamamla
                 </>
               ) : (
                 <>
@@ -722,6 +1050,22 @@ export default function SetupWizardPage() {
           )}
         </div>
       </div>
+
+      {/* CSS for 3D card effect */}
+      <style>{`
+        .perspective-1000 {
+          perspective: 1000px;
+        }
+        .transform-style-preserve-3d {
+          transform-style: preserve-3d;
+        }
+        .backface-hidden {
+          backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+          transform: rotateY(180deg);
+        }
+      `}</style>
     </div>
   );
 }
