@@ -6,26 +6,29 @@ import { toast } from "sonner";
 const NotificationContext = createContext(null);
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
-const WS_URL = process.env.REACT_APP_BACKEND_URL?.replace("https://", "wss://").replace("http://", "ws://");
 
-// Notification sound (optional - can be enabled/disabled)
+// URL MANTIĞI: Dinamik Domain Desteği
+const getWsBaseUrl = () => {
+  if (typeof window !== "undefined" && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    return `${protocol}${window.location.host}`; 
+  }
+  const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+  return backendUrl.replace(/^http/, "ws");
+};
+
+const BASE_WS_URL = getWsBaseUrl();
 const NOTIFICATION_SOUND_ENABLED = true;
 
-// Toast icons based on notification type
 const getToastIcon = (type) => {
   switch (type) {
-    case "success":
-      return "✅";
-    case "warning":
-      return "⚠️";
-    case "error":
-      return "❌";
-    default:
-      return "🔔";
+    case "success": return "✅";
+    case "warning": return "⚠️";
+    case "error": return "❌";
+    default: return "🔔";
   }
 };
 
-// Toast style based on notification type
 const getToastStyle = (type) => {
   switch (type) {
     case "success":
@@ -52,44 +55,56 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasNewNotification, setHasNewNotification] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  
   const wsRef = useRef(null);
+  const heartbeatIntervalRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const audioRef = useRef(null);
 
-  // Initialize audio for notification sound
+  // Ses motorunu güvenli hale getirdik
   useEffect(() => {
     if (NOTIFICATION_SOUND_ENABLED) {
-      // Create a simple beep using Web Audio API
       audioRef.current = {
         play: () => {
           try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+
+            const audioContext = new AudioContext();
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
-            
+
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
-            
+
             oscillator.frequency.value = 800;
             oscillator.type = "sine";
-            
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-            
+
+            gainNode.gain.setValueAtTime(0.05, audioContext.currentTime); // Ses seviyesini biraz kıstık (0.1 -> 0.05)
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.3);
+
+            // ÖNEMLİ: Bellek sızıntısını önlemek için AudioContext'i kapatıyoruz
+            setTimeout(() => {
+                if (audioContext.state !== 'closed') {
+                    audioContext.close().catch(() => {});
+                }
+            }, 500);
+
           } catch (e) {
-            // Audio not supported or blocked
+            // Tarayıcı izin vermezse (Autoplay Policy) sessizce hatayı yutuyoruz, konsolu kirletmiyoruz.
+            // Kullanıcı sayfaya ilk tıkladığında sonraki bildirimlerde ses çalışacaktır.
           }
         }
       };
     }
   }, []);
 
-  // Fetch notifications
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
-    
     try {
       const response = await axios.get(`${API_URL}/notifications`);
       setNotifications(response.data);
@@ -98,10 +113,8 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [isAuthenticated]);
 
-  // Fetch unread count
   const fetchUnreadCount = useCallback(async () => {
     if (!isAuthenticated) return;
-    
     try {
       const response = await axios.get(`${API_URL}/notifications/unread-count`);
       setUnreadCount(response.data.count);
@@ -110,7 +123,6 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [isAuthenticated]);
 
-  // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
       await axios.put(`${API_URL}/notifications/${notificationId}/read`);
@@ -123,7 +135,6 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Mark all as read
   const markAllAsRead = async () => {
     try {
       await axios.put(`${API_URL}/notifications/read-all`);
@@ -134,39 +145,27 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Clear new notification flag (for animation reset)
   const clearNewNotificationFlag = useCallback(() => {
     setHasNewNotification(false);
   }, []);
 
-  // Handle incoming WebSocket message
   const handleWebSocketMessage = useCallback((event) => {
     try {
+      if (event.data === "pong") return;
       const data = JSON.parse(event.data);
       if (data.type === "notification") {
         const notification = data.data;
-        
-        // Add to notifications list
         setNotifications((prev) => [notification, ...prev]);
         setUnreadCount((prev) => prev + 1);
-        
-        // Trigger animation flag
         setHasNewNotification(true);
+        setTimeout(() => setHasNewNotification(false), 3000);
         
-        // Auto-clear animation flag after 3 seconds
-        setTimeout(() => {
-          setHasNewNotification(false);
-        }, 3000);
-        
-        // Play notification sound
         if (audioRef.current && NOTIFICATION_SOUND_ENABLED) {
-          audioRef.current.play();
+            audioRef.current.play();
         }
         
-        // Show toast notification with custom styling
         const icon = getToastIcon(notification.type);
         const toastOptions = getToastStyle(notification.type);
-        
         toast(
           <div className="flex items-start gap-2">
             <span className="text-lg">{icon}</span>
@@ -178,86 +177,91 @@ export const NotificationProvider = ({ children }) => {
           {
             duration: 5000,
             ...toastOptions,
-            action: notification.link ? {
-              label: "Görüntüle",
-              onClick: () => window.location.href = notification.link
-            } : undefined
+            action: notification.link ? { label: "Görüntüle", onClick: () => window.location.href = notification.link } : undefined
           }
         );
       }
-    } catch (error) {
-      console.error("Failed to parse WebSocket message:", error);
-    }
+    } catch (error) {}
   }, []);
 
-  // WebSocket connection with auto-reconnect
+  // WebSocket Connection Logic
   useEffect(() => {
-    if (!isAuthenticated || !token) {
-      // Close existing connection if not authenticated
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
+    let ws = null;
+    let isActive = true;
+
+    const cleanup = () => {
+      isActive = false;
+      if (ws) ws.close();
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
+      setConnectionStatus("disconnected");
+    };
+
+    if (!isAuthenticated || !token) {
+      cleanup();
       return;
     }
 
-    const connectWebSocket = () => {
-      // Don't connect if already connected or connecting
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        return;
-      }
+    const connect = () => {
+      if (!isActive) return;
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return;
+
+      console.log(`🔄 Connecting to WebSocket... (${BASE_WS_URL}/api/ws/...)`);
+      setConnectionStatus("connecting");
 
       try {
-        const websocket = new WebSocket(`${WS_URL}/ws/${token}`);
+        ws = new WebSocket(`${BASE_WS_URL}/api/ws/${token}`);
+        wsRef.current = ws;
 
-        websocket.onopen = () => {
+        ws.onopen = () => {
+          if (!isActive) { ws.close(); return; }
           console.log("🔗 WebSocket connected");
+          setConnectionStatus("connected");
+
+          if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) ws.send("ping");
+          }, 25000);
         };
 
-        websocket.onmessage = handleWebSocketMessage;
+        ws.onmessage = handleWebSocketMessage;
 
-        websocket.onclose = (event) => {
+        ws.onclose = (event) => {
+          if (!isActive) return;
           console.log("🔌 WebSocket disconnected", event.code);
+          setConnectionStatus("disconnected");
           wsRef.current = null;
-          
-          // Auto-reconnect after 3 seconds (only if still authenticated)
-          if (isAuthenticated && token) {
+          if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+
+          if (event.code !== 4001) {
             reconnectTimeoutRef.current = setTimeout(() => {
-              console.log("🔄 Attempting WebSocket reconnection...");
-              connectWebSocket();
-            }, 3000);
+              if (isActive) connect();
+            }, 5000);
           }
         };
 
-        websocket.onerror = (error) => {
-          console.error("WebSocket error:", error);
+        ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            if (ws.readyState === WebSocket.OPEN) ws.close();
         };
 
-        wsRef.current = websocket;
-      } catch (error) {
-        console.error("Failed to create WebSocket:", error);
-        // Retry connection after 5 seconds
-        reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
+      } catch (err) {
+        console.error("WS Connection error:", err);
+        setConnectionStatus("error");
+        reconnectTimeoutRef.current = setTimeout(() => { if(isActive) connect(); }, 5000);
       }
     };
 
-    connectWebSocket();
-
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
+    connect();
+    return cleanup;
   }, [isAuthenticated, token, handleWebSocketMessage]);
 
-  // Initial fetch
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
@@ -272,6 +276,7 @@ export const NotificationProvider = ({ children }) => {
     notifications,
     unreadCount,
     hasNewNotification,
+    connectionStatus,
     fetchNotifications,
     markAsRead,
     markAllAsRead,

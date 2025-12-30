@@ -19,6 +19,9 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  SheetHeader,      // EKLENDİ
+  SheetTitle,       // EKLENDİ
+  SheetDescription, // EKLENDİ
 } from "@/components/ui/sheet";
 import {
   Popover,
@@ -51,9 +54,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Briefcase,
-  CreditCard,
   Crown,
-  CalendarDays,
   UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -152,7 +153,6 @@ const NavItem = ({ item, onClick, collapsed }) => {
 
 const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user, pendingTasks }) => {
   
-  // Logo Mantığı: Koyu modda dark logo varsa onu kullan, yoksa light logoyu kullan (fallback).
   const logoUrl = isDark && tenant?.dark_logo_url 
     ? tenant.dark_logo_url 
     : (tenant?.light_logo_url || null);
@@ -178,7 +178,6 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
 
   return (
     <div className="flex h-full flex-col gap-2 relative bg-background border-r">
-      {/* Toggle Button */}
       <Button
         variant="ghost"
         size="icon"
@@ -192,7 +191,6 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
         )}
       </Button>
 
-      {/* Logo */}
       <div className="flex h-16 items-center border-b px-6 shrink-0">
         <div className={cn(
           "flex items-center gap-3 transition-all duration-700",
@@ -207,7 +205,6 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
             />
           ) : (
             <>
-              {/* Logo yoksa veya collapsed ise baş harfler */}
               <div 
                 className={cn(
                   "h-10 w-10 rounded-lg bg-primary flex items-center justify-center shrink-0 transition-all duration-700",
@@ -229,12 +226,10 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
         </div>
       </div>
 
-      {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
           {getNavGroups(user?.is_admin).map((group, index) => (
             <div key={index} className="mb-4 last:mb-0">
-              {/* Grup Başlığı */}
               {!collapsed && (
                 <h4 className="text-[11px] uppercase font-bold text-muted-foreground/70 tracking-wider mb-2 px-3 mt-2">
                   {group.title}
@@ -242,7 +237,6 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
               )}
               {collapsed && index > 0 && <div className="my-2 border-t border-border/40 mx-2" />}
               
-              {/* Grup Linkleri */}
               <div className="flex flex-col gap-1">
                 {group.items.map((item) => (
                   <NavItem key={item.href} item={item} onClick={onNavClick} collapsed={collapsed} />
@@ -253,7 +247,6 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
         </nav>
       </ScrollArea>
 
-      {/* USER FOOTER SECTION */}
       <div className="p-3 mt-auto border-t bg-muted/10">
           <NavLink 
             to="/profile"
@@ -270,7 +263,6 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
                     {getInitials(user?.full_name)}
                  </AvatarFallback>
                </Avatar>
-               {/* Online/Status Indicator */}
                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-background"></span>
@@ -360,7 +352,6 @@ const ThemeSwitch = ({ isDark, onToggle }) => {
         )}
       </span>
       
-      {/* Efektler */}
       <div className={cn(
         "absolute left-1.5 flex gap-0.5 transition-opacity duration-700",
         isDark ? "opacity-100" : "opacity-0"
@@ -404,7 +395,7 @@ const CurrentTime = () => {
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, hasNewNotification, clearNewNotificationFlag } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, hasNewNotification, connectionStatus } = useNotifications();
   const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -420,7 +411,6 @@ export default function DashboardLayout() {
         axios.get(`${API_URL}/tasks/me`)
       ];
       
-      // Only fetch subscription for admin users
       if (user?.is_admin) {
         requests.push(axios.get(`${API_URL}/subscription`));
       }
@@ -428,11 +418,9 @@ export default function DashboardLayout() {
       const responses = await Promise.all(requests);
       setTenant(responses[0].data);
       
-      // Tamamlanmamış görev sayısını hesapla
       const pending = responses[1].data.filter(t => t.status !== 'tamamlandi').length;
       setPendingTaskCount(pending);
 
-      // Set subscription data for admin
       if (user?.is_admin && responses[2]) {
         setSubscription(responses[2].data);
       }
@@ -468,7 +456,6 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop Sidebar */}
       <aside className={cn(
         "fixed inset-y-0 left-0 z-50 hidden border-r bg-background lg:block transition-all duration-700 ease-in-out",
         sidebarCollapsed ? "w-20" : "w-64"
@@ -483,7 +470,6 @@ export default function DashboardLayout() {
         />
       </aside>
 
-      {/* Mobile Header */}
       <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:hidden">
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
@@ -492,6 +478,13 @@ export default function DashboardLayout() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
+            {/* Accessibility Fix: SheetTitle ve SheetDescription eklendi (sr-only ile gizlendi) */}
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigasyon Menüsü</SheetTitle>
+              <SheetDescription>
+                Uygulama içi gezinme menüsü.
+              </SheetDescription>
+            </SheetHeader>
             <Sidebar 
               onNavClick={() => setMobileMenuOpen(false)} 
               tenant={tenant} 
@@ -506,7 +499,6 @@ export default function DashboardLayout() {
         <div className="flex-1" />
         <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
         
-        {/* Mobile Avatar */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -531,17 +523,19 @@ export default function DashboardLayout() {
         </DropdownMenu>
       </header>
 
-      {/* Main Content */}
       <div className={cn(
         "transition-all duration-700 ease-in-out",
         sidebarCollapsed ? "lg:pl-20" : "lg:pl-64"
       )}>
-        {/* Desktop Header */}
         <header className="sticky top-0 z-40 hidden h-16 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 lg:flex">
-          <div />
+          <div className="flex items-center gap-2">
+             {/* Bağlantı durumu göstergesi (Opsiyonel Debug İçin) */}
+             {/* <Badge variant={connectionStatus === 'connected' ? 'outline' : 'destructive'} className="text-[10px]">
+                {connectionStatus === 'connected' ? 'Bağlı' : 'Bağlantı Yok'}
+             </Badge> */}
+          </div>
 
           <div className="flex items-center gap-4">
-            {/* Subscription Info - Only for Admin */}
             {user?.is_admin && subscription?.is_active && (
               <div 
                 className={cn(
@@ -563,7 +557,6 @@ export default function DashboardLayout() {
             <CurrentTime />
             <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
 
-            {/* Notifications */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button 
@@ -595,11 +588,14 @@ export default function DashboardLayout() {
               <PopoverContent className="w-80 p-0" align="end">
                 <div className="flex items-center justify-between p-3 border-b">
                   <h4 className="font-semibold text-sm">Bildirimler</h4>
-                  {unreadCount > 0 && (
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAsRead}>
-                      Tümünü Oku
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                     <div className={cn("h-2 w-2 rounded-full", connectionStatus === 'connected' ? "bg-emerald-500" : "bg-red-500")} title={connectionStatus} />
+                     {unreadCount > 0 && (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllAsRead}>
+                        Tümünü Oku
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <ScrollArea className="max-h-80">
                   {notifications.length === 0 ? (
@@ -631,7 +627,6 @@ export default function DashboardLayout() {
               </PopoverContent>
             </Popover>
 
-            {/* User Menu with Avatar */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2 pl-2" data-testid="user-menu-button">
@@ -664,7 +659,6 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="p-6 lg:p-8">
           <Outlet />
         </main>

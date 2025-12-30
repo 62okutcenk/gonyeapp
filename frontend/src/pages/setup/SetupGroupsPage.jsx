@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"; // Bu import kalabilir, ana butonlar için
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Accordion,
@@ -38,10 +37,14 @@ import {
   Plus,
   Edit2,
   Trash2,
-  GripVertical,
   ChevronRight,
   Loader2,
 } from "lucide-react";
+
+// cn utility fonksiyonu, shadcn kullanıyorsanız utils dosyasında vardır
+// eğer yoksa: function cn(...classes) { return classes.filter(Boolean).join(" "); }
+// Genellikle projede: import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
@@ -259,21 +262,37 @@ export default function SetupGroupsPage() {
                             <p className="text-sm text-muted-foreground">{group.description}</p>
                           )}
                         </div>
+                        
+                        {/* HYDRATION FIX: AccordionTrigger bir butondur. İçine başka bir <Button> konulamaz.
+                          Bu yüzden burada onClick olayını durduran ve buton gibi görünen div'ler kullanıyoruz.
+                        */}
                         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openGroupDialog(group)}
+                          <div
+                            role="button"
+                            className={cn(
+                              "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                              "hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-pointer"
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openGroupDialog(group);
+                            }}
                           >
                             <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteGroup(group)}
+                          </div>
+                          <div
+                            role="button"
+                            className={cn(
+                              "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                              "hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-pointer"
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteGroup(group);
+                            }}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          </div>
                         </div>
                       </div>
                     </AccordionTrigger>
@@ -340,7 +359,7 @@ export default function SetupGroupsPage() {
         </CardContent>
       </Card>
 
-      {/* Group Dialog */}
+      {/* Dialogs and Alerts (Same as original) */}
       <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -396,7 +415,6 @@ export default function SetupGroupsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Subtask Dialog */}
       <Dialog open={subtaskDialogOpen} onOpenChange={setSubtaskDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -442,7 +460,6 @@ export default function SetupGroupsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Group Confirmation */}
       <AlertDialog open={!!deleteGroup} onOpenChange={() => setDeleteGroup(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -463,7 +480,6 @@ export default function SetupGroupsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Subtask Confirmation */}
       <AlertDialog open={!!deleteSubtask} onOpenChange={() => setDeleteSubtask(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

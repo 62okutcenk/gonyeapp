@@ -517,20 +517,28 @@ class ConnectionManager:
         if user_id not in self.active_connections:
             self.active_connections[user_id] = []
         self.active_connections[user_id].append(websocket)
+        logger.info(f"WebSocket connected: User {user_id}")
 
     def disconnect(self, websocket: WebSocket, user_id: str):
         if user_id in self.active_connections:
-            self.active_connections[user_id].remove(websocket)
+            if websocket in self.active_connections[user_id]:
+                self.active_connections[user_id].remove(websocket)
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
+        logger.info(f"WebSocket disconnected: User {user_id}")
 
     async def send_to_user(self, user_id: str, message: dict):
         if user_id in self.active_connections:
+            dead_connections = []
             for connection in self.active_connections[user_id]:
                 try:
                     await connection.send_json(message)
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Error sending message to user {user_id}: {e}")
+                    dead_connections.append(connection)
+            
+            for dead in dead_connections:
+                self.disconnect(dead, user_id)
 
     async def broadcast_to_tenant(self, tenant_id: str, message: dict):
         users = await db.users.find({"tenant_id": tenant_id}, {"id": 1, "_id": 0}).to_list(1000)
@@ -2766,22 +2774,47 @@ async def get_my_tasks(user: dict = Depends(get_current_user)):
     return result
 # ==================== WEBSOCKET ====================
 
-@app.websocket("/ws/{token}")
+@app.websocket("/api/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = payload["user_id"]
-    except:
-        await websocket.close(code=4001)
-        return
-    
-    await manager.connect(websocket, user_id)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            # Handle incoming messages if needed
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, user_id)
+        # Token doğrulama
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            user_id = payload["user_id"]
+        except jwt.ExpiredSignatureError:
+            print("WS Token Expired")
+            await websocket.close(code=4001, reason="Token expired")
+            return
+        except jwt.InvalidTokenError:
+            print("WS Token Invalid")
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+        except Exception as e:
+            print(f"WS Token Error: {e}")
+            await websocket.close(code=4000, reason="Auth error")
+            return
+        
+        # Bağlantıyı kabul et
+        await manager.connect(websocket, user_id)
+        
+        try:
+            while True:
+                # Heartbeat: Client'tan mesaj bekle
+                data = await websocket.receive_text()
+                
+                # Eğer client "ping" atarsa "pong" ile cevap ver
+                if data == "ping":
+                    await websocket.send_text("pong")
+                    continue
+                
+        except WebSocketDisconnect:
+            manager.disconnect(websocket, user_id)
+        except Exception as e:
+            logger.error(f"WebSocket error in loop: {e}")
+            manager.disconnect(websocket, user_id)
+            
+    except Exception as e:
+        logger.error(f"Critical WebSocket endpoint error: {e}")
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -2794,7 +2827,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
