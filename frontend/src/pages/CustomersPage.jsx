@@ -104,7 +104,8 @@ export default function CustomersPage() {
       setLoading(true);
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
-      if (typeFilter) params.append("type", typeFilter);
+      // "all" kontrolü eklendi, böylece tüm tipleri seçince parametre gönderilmez
+      if (typeFilter && typeFilter !== "all") params.append("type", typeFilter);
       
       const response = await axios.get(`${API_URL}/customers?${params.toString()}`);
       setCustomers(response.data);
@@ -405,7 +406,8 @@ export default function CustomersPage() {
             <SelectValue placeholder="Tüm Tipler" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tüm Tipler</SelectItem>
+            {/* HATA DUZELTİLDİ: value="" yerine value="all" yapıldı */}
+            <SelectItem value="all">Tüm Tipler</SelectItem>
             {customerTypes.map((t) => (
               <SelectItem key={t.value} value={t.value}>
                 <div className="flex items-center gap-2">
