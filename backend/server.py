@@ -539,6 +539,16 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# Status labels for notifications
+PROJECT_STATUS_LABELS = {
+    "planlandi": "Planlandı",
+    "uretimde": "Üretimde",
+    "montaj": "Montaj",
+    "kontrol": "Kontrol",
+    "tamamlandi": "Tamamlandı",
+    "iptal": "İptal"
+}
+
 async def create_notification(user_id: str, tenant_id: str, title: str, message: str, 
                             notification_type: str = "info", link: str = None):
     notification = {
