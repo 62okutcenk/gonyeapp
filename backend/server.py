@@ -2081,6 +2081,7 @@ async def delete_project_assignment(project_id: str, assignment_id: str, user: d
 @api_router.post("/projects/{project_id}/payments")
 async def create_project_payment(project_id: str, data: ProjectPaymentCreate, user: dict = Depends(get_current_user)):
     check_permission(user, "projects.manage_finance")
+    await enforce_project_lock(project_id, user)
     
     area = await db.project_areas.find_one({"id": data.area_id, "project_id": project_id}, {"_id": 0})
     if not area:
