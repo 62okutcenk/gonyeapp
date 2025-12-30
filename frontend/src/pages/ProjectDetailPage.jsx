@@ -1644,6 +1644,107 @@ export default function ProjectDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Stop Project Dialog */}
+      <AlertDialog open={showStopDialog} onOpenChange={setShowStopDialog}>
+        <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800">
+            <AlertDialogHeader>
+                <AlertDialogTitle className="dark:text-white flex items-center gap-2">
+                  <Pause className="h-5 w-5 text-amber-500" />
+                  Projeyi Durdur
+                </AlertDialogTitle>
+                <AlertDialogDescription className="dark:text-slate-400">
+                  Bu projeyi durdurmak istediğinize emin misiniz?
+                  <br /><br />
+                  <span className="text-amber-600 dark:text-amber-400">
+                    Durdurulmuş projelerde yalnızca yöneticiler işlem yapabilir. 
+                    Diğer kullanıcılar proje bilgilerini görüntüleyebilir ancak değişiklik yapamaz.
+                  </span>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="dark:bg-slate-800 dark:text-white dark:border-slate-700">
+                  İptal
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleStopProject} 
+                  className="bg-amber-600 hover:bg-amber-700"
+                  disabled={statusChanging}
+                >
+                  {statusChanging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pause className="h-4 w-4 mr-2" />}
+                  Durdur
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Complete Project Dialog */}
+      <AlertDialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+        <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800">
+            <AlertDialogHeader>
+                <AlertDialogTitle className="dark:text-white flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-emerald-500" />
+                  Projeyi Tamamla
+                </AlertDialogTitle>
+                <AlertDialogDescription className="dark:text-slate-400">
+                  Bu projeyi tamamlamak istediğinize emin misiniz?
+                  <br /><br />
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    Tamamlanan projelerde yalnızca yöneticiler işlem yapabilir.
+                    Proje ekibine tebrik bildirimi gönderilecektir.
+                  </span>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="dark:bg-slate-800 dark:text-white dark:border-slate-700">
+                  İptal
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleCompleteProject} 
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  disabled={statusChanging}
+                >
+                  {statusChanging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                  Tamamla
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resume Project Dialog */}
+      <AlertDialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
+        <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800">
+            <AlertDialogHeader>
+                <AlertDialogTitle className="dark:text-white flex items-center gap-2">
+                  <Play className="h-5 w-5 text-blue-500" />
+                  {project?.status === "tamamlandi" ? "Projeyi Yeniden Aç" : "Projeyi Devam Ettir"}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="dark:text-slate-400">
+                  {project?.status === "tamamlandi" 
+                    ? "Tamamlanmış projeyi yeniden açmak istediğinize emin misiniz?"
+                    : "Durdurulmuş projeyi devam ettirmek istediğinize emin misiniz?"
+                  }
+                  <br /><br />
+                  <span className="text-blue-600 dark:text-blue-400">
+                    Proje "Üretimde" durumuna geçirilecek ve tüm kullanıcılar tekrar işlem yapabilecektir.
+                  </span>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="dark:bg-slate-800 dark:text-white dark:border-slate-700">
+                  İptal
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleResumeProject} 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={statusChanging}
+                >
+                  {statusChanging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                  {project?.status === "tamamlandi" ? "Yeniden Aç" : "Devam Ettir"}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
