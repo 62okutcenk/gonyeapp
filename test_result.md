@@ -287,11 +287,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Proje oluşturma (alanlar ve finans ile)"
-    - "Proje detay sayfası tab yapısı"
-    - "Proje personel atama ve yetkilendirme"
-    - "Proje tahsilat yönetimi"
-    - "Proje aktivite logları"
+    - "Customer CRM API endpoints"
+    - "CustomersPage list and create"
+    - "CustomerDetailPage tabs"
+    - "NewProjectPage customer selection"
+    - "Subscription system"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -299,23 +299,35 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      BÜYÜK REFAKTÖR TAMAMLANDI - Proje Modülü Yenilendi:
+      CRM (Müşteri Yönetimi) SİSTEMİ EKLENDİ:
       
       Backend değişiklikleri (/app/backend/server.py):
-      - Yeni modeller: ProjectArea, ProjectAssignment, ProjectPayment, ProjectActivity
-      - Yeni yetkiler: projects.view_all, projects.assign_staff, projects.manage_finance
-      - API endpoint'leri: /projects, /projects/{id}/areas, /projects/{id}/assignments, /projects/{id}/payments, /projects/{id}/activities
-      - Proje erişim kontrolü: can_access_project() helper
-      - Aktivite loglama: log_project_activity() helper
+      - CustomerCreate, CustomerUpdate, CustomerResponse, CustomerStats modelleri
+      - GET /api/customers - Müşteri listesi (arama ve tip filtresi)
+      - POST /api/customers - Yeni müşteri
+      - GET /api/customers/{id} - Detay
+      - GET /api/customers/{id}/stats - Finansal özet
+      - GET /api/customers/{id}/projects - Müşteri projeleri
+      - PUT /api/customers/{id} - Güncelleme
+      - DELETE /api/customers/{id} - Silme (proje kontrolü)
+      - Project modeline customer_id alanı eklendi
       
       Frontend değişiklikleri:
-      - ProjectsPage.jsx: Yeni kart tasarımı (alanlar, finans özeti, ilerleme)
-      - NewProjectPage.jsx: Çalışma alanları, iş kalemleri, personel atama
-      - ProjectDetailPage.jsx: Tab yapısı (Genel, Alanlar, Finans, Ekip, Aktiviteler)
+      - CustomersPage.jsx: Müşteri listesi, arama, filtre, ekleme/düzenleme dialog
+      - CustomerDetailPage.jsx: Profil kartı + Tabs (Projeler, Finansal, Dosyalar)
+      - NewProjectPage.jsx: Müşteri seçimi (Autocomplete) + Hızlı müşteri ekleme
+      - ProjectDetailPage.jsx: Müşteri adı tıklanabilir link
+      - Sidebar'a "Müşteriler" menüsü eklendi
+      - Routes: /customers, /customers/:id
+      
+      ÖNCEKİ İŞ: ABONELİK SİSTEMİ
+      - SetupWizardPage'e ödeme adımı eklendi (animasyonlu kredi kartı)
+      - SubscriptionPage oluşturuldu (admin için)
+      - Header'a abonelik bilgisi badge eklendi
       
       Test edilmesi gereken akışlar:
-      1. Kayıt -> Kurulum -> Proje oluştur (alanlar, iş kalemleri, fiyat)
-      2. Proje detay sayfasında tab'lar arası geçiş
-      3. Tahsilat ekleme/silme
-      4. Personel atama (proje/alan bazlı)
-      5. Aktivite loglarının görüntülenmesi
+      1. Müşteri CRUD (oluştur, listele, güncelle, sil)
+      2. Müşteri detay sayfası ve sekmeler
+      3. Yeni proje oluştururken müşteri seçimi
+      4. Kurulum sihirbazında ödeme adımı
+      5. Abonelik sayfası görüntüleme
