@@ -373,6 +373,7 @@ class ProjectResponse(BaseModel):
     tenant_id: str
     name: str
     description: Optional[str] = None
+    customer_id: Optional[str] = None
     customer_name: str
     customer_phone: Optional[str] = None
     customer_email: Optional[str] = None
