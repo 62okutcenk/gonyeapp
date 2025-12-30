@@ -619,6 +619,50 @@ async def notify_project_team(project_id: str, tenant_id: str, title: str, messa
             continue
         await create_notification(user_id, tenant_id, title, message, notification_type, link)
 
+# Helper function to check if project is locked for modifications
+async def check_project_locked(project_id: str, user: dict) -> dict:
+    """
+    Check if project is locked (completed/stopped) and if user can modify.
+    Returns: {"locked": bool, "reason": str or None, "can_modify": bool}
+    """
+    project = await db.projects.find_one(
+        {"id": project_id, "tenant_id": user["tenant_id"]},
+        {"status": 1, "name": 1, "_id": 0}
+    )
+    
+    if not project:
+        return {"locked": False, "reason": None, "can_modify": True}
+    
+    status = project.get("status")
+    
+    if status in PROJECT_LOCKED_STATUSES:
+        # Admin can always modify
+        if user.get("is_admin"):
+            return {"locked": True, "reason": None, "can_modify": True}
+        
+        # Non-admin cannot modify locked projects
+        if status == "durduruldu":
+            return {
+                "locked": True, 
+                "reason": "Bu proje durdurulmuştur. Sadece yönetici işlem yapabilir.",
+                "can_modify": False
+            }
+        elif status == "tamamlandi":
+            return {
+                "locked": True,
+                "reason": "Bu proje tamamlanmıştır. Sadece yönetici işlem yapabilir.",
+                "can_modify": False
+            }
+    
+    return {"locked": False, "reason": None, "can_modify": True}
+
+# Helper to enforce project lock
+async def enforce_project_lock(project_id: str, user: dict):
+    """Raise exception if project is locked and user cannot modify"""
+    lock_info = await check_project_locked(project_id, user)
+    if lock_info["locked"] and not lock_info["can_modify"]:
+        raise HTTPException(status_code=403, detail=lock_info["reason"])
+
 # ==================== DEFAULT PERMISSIONS ====================
 
 DEFAULT_PERMISSIONS = [
