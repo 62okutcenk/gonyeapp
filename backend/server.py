@@ -1952,6 +1952,15 @@ async def create_project_assignment(project_id: str, data: ProjectAssignmentCrea
     if not assignment:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     
+    # Send notification to the assigned user
+    await create_notification(
+        data.user_id, user["tenant_id"],
+        "👤 Yeni Proje Ataması",
+        f"'{project.get('name', 'Proje')}' projesine atandınız.",
+        "info",
+        f"/projects/{project_id}"
+    )
+    
     return assignment
 
 @api_router.delete("/projects/{project_id}/assignments/{assignment_id}")
