@@ -2059,6 +2059,7 @@ async def create_project_assignment(project_id: str, data: ProjectAssignmentCrea
 @api_router.delete("/projects/{project_id}/assignments/{assignment_id}")
 async def delete_project_assignment(project_id: str, assignment_id: str, user: dict = Depends(get_current_user)):
     check_permission(user, "projects.assign_staff")
+    await enforce_project_lock(project_id, user)
     
     assignment = await db.project_assignments.find_one({"id": assignment_id, "project_id": project_id}, {"_id": 0})
     if not assignment:
