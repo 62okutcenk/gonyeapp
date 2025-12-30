@@ -1959,6 +1959,7 @@ async def create_project_area(project_id: str, data: ProjectAreaCreate, user: di
 @api_router.put("/projects/{project_id}/areas/{area_id}")
 async def update_project_area(project_id: str, area_id: str, data: ProjectAreaUpdate, user: dict = Depends(get_current_user)):
     check_permission(user, "projects.edit")
+    await enforce_project_lock(project_id, user)
     
     area = await db.project_areas.find_one({"id": area_id, "project_id": project_id}, {"_id": 0})
     if not area:
