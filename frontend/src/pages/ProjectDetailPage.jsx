@@ -1923,6 +1923,331 @@ export default function ProjectDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Delete Area Confirmation */}
+      <AlertDialog open={!!deleteAreaId} onOpenChange={() => setDeleteAreaId(null)}>
+        <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800">
+            <AlertDialogHeader>
+                <AlertDialogTitle className="dark:text-white">Alanı Sil</AlertDialogTitle>
+                <AlertDialogDescription className="dark:text-slate-400">
+                  Bu alanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz ve alana ait tüm görevler silinecektir.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="dark:bg-slate-800 dark:text-white dark:border-slate-700">İptal</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteArea} className="bg-red-600 hover:bg-red-700">Sil</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Project Dialog */}
+      <Dialog open={editProjectDialog} onOpenChange={setEditProjectDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col dark:bg-slate-900 dark:border-slate-800">
+          <DialogHeader>
+            <DialogTitle className="dark:text-white flex items-center gap-2">
+              <PenLine className="h-5 w-5" />
+              Projeyi Düzenle
+            </DialogTitle>
+            <DialogDescription className="dark:text-slate-400">
+              Proje bilgilerini ve çalışma alanlarını düzenleyin
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-6 py-4">
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Proje Bilgileri
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2 space-y-2">
+                    <Label htmlFor="edit-name">Proje Adı *</Label>
+                    <Input
+                      id="edit-name"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                      placeholder="Proje adı"
+                      className="dark:bg-slate-800 dark:border-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-customer">Müşteri Adı</Label>
+                    <Input
+                      id="edit-customer"
+                      value={editForm.customer_name}
+                      onChange={(e) => setEditForm({...editForm, customer_name: e.target.value})}
+                      className="dark:bg-slate-800 dark:border-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-phone">Telefon</Label>
+                    <Input
+                      id="edit-phone"
+                      value={editForm.customer_phone}
+                      onChange={(e) => setEditForm({...editForm, customer_phone: e.target.value})}
+                      className="dark:bg-slate-800 dark:border-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-email">E-posta</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editForm.customer_email}
+                      onChange={(e) => setEditForm({...editForm, customer_email: e.target.value})}
+                      className="dark:bg-slate-800 dark:border-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-due-date">Termin Tarihi</Label>
+                    <Input
+                      id="edit-due-date"
+                      type="date"
+                      value={editForm.due_date}
+                      onChange={(e) => setEditForm({...editForm, due_date: e.target.value})}
+                      className="dark:bg-slate-800 dark:border-slate-700"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-2">
+                    <Label htmlFor="edit-desc">Açıklama</Label>
+                    <Textarea
+                      id="edit-desc"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      rows={2}
+                      className="dark:bg-slate-800 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="dark:bg-slate-700" />
+
+              {/* Areas */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Çalışma Alanları ({editAreas.length})
+                  </h3>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleAddNewArea}
+                    className="dark:border-slate-700"
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Yeni Alan Ekle
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {editAreas.map((area, idx) => (
+                    <Card key={area.id} className="dark:bg-slate-800 dark:border-slate-700">
+                      <CardHeader className="p-4 pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="dark:border-slate-600">
+                              {idx + 1}
+                            </Badge>
+                            {area.isEditing || area.isNew ? (
+                              <Input
+                                value={area.name}
+                                onChange={(e) => handleUpdateEditArea(area.id, "name", e.target.value)}
+                                placeholder="Alan adı (Örn: Mutfak)"
+                                className="w-48 h-8 dark:bg-slate-700 dark:border-slate-600"
+                              />
+                            ) : (
+                              <span className="font-medium dark:text-white">{area.name || "İsimsiz Alan"}</span>
+                            )}
+                            {area.isNew && (
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Yeni</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!area.isNew && !area.isEditing && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUpdateEditArea(area.id, "isEditing", true)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <PenLine className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveEditArea(area.id)}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      
+                      {(area.isEditing || area.isNew) && (
+                        <CardContent className="p-4 pt-2 space-y-4">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Adres</Label>
+                              <Input
+                                value={area.address}
+                                onChange={(e) => handleUpdateEditArea(area.id, "address", e.target.value)}
+                                placeholder="Açık adres"
+                                className="h-9 dark:bg-slate-700 dark:border-slate-600"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Anlaşma Bedeli (₺)</Label>
+                              <Input
+                                type="number"
+                                value={area.agreed_price}
+                                onChange={(e) => handleUpdateEditArea(area.id, "agreed_price", e.target.value)}
+                                placeholder="0"
+                                className="h-9 dark:bg-slate-700 dark:border-slate-600"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">İl</Label>
+                              <Select
+                                value={area.city}
+                                onValueChange={(v) => {
+                                  handleUpdateEditArea(area.id, "city", v);
+                                  handleUpdateEditArea(area.id, "district", "");
+                                }}
+                              >
+                                <SelectTrigger className="h-9 dark:bg-slate-700 dark:border-slate-600">
+                                  <SelectValue placeholder="İl seçin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getCities().map((city) => (
+                                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">İlçe</Label>
+                              <Select
+                                value={area.district}
+                                onValueChange={(v) => handleUpdateEditArea(area.id, "district", v)}
+                                disabled={!area.city}
+                              >
+                                <SelectTrigger className="h-9 dark:bg-slate-700 dark:border-slate-600">
+                                  <SelectValue placeholder="İlçe seçin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getDistricts(area.city).map((d) => (
+                                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Work Items - Only for new areas */}
+                          {area.isNew && (
+                            <div className="space-y-2">
+                              <Label className="text-xs flex items-center gap-1">
+                                <Package className="h-3 w-3" />
+                                İş Kalemleri
+                              </Label>
+                              <div className="flex flex-wrap gap-2">
+                                {workItems.map((wi) => {
+                                  const isSelected = area.work_items.some(w => w.work_item_id === wi.id);
+                                  return (
+                                    <Badge
+                                      key={wi.id}
+                                      variant={isSelected ? "default" : "outline"}
+                                      className={cn(
+                                        "cursor-pointer transition-colors",
+                                        isSelected 
+                                          ? "bg-primary hover:bg-primary/90" 
+                                          : "hover:bg-slate-100 dark:hover:bg-slate-700 dark:border-slate-600"
+                                      )}
+                                      onClick={() => handleToggleWorkItem(area.id, wi)}
+                                    >
+                                      {wi.name}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                              {area.work_items.length === 0 && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                  En az bir iş kalemi seçmelisiniz
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {!area.isNew && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUpdateEditArea(area.id, "isEditing", false)}
+                              className="mt-2"
+                            >
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Tamam
+                            </Button>
+                          )}
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+
+                  {editAreas.length === 0 && (
+                    <div className="text-center py-8 border-2 border-dashed rounded-lg dark:border-slate-700">
+                      <MapPin className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Henüz alan eklenmemiş
+                      </p>
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-3"
+                        onClick={handleAddNewArea}
+                      >
+                        İlk Alanı Ekle
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="border-t pt-4 dark:border-slate-700">
+            <Button 
+              variant="outline" 
+              onClick={() => setEditProjectDialog(false)}
+              className="dark:bg-slate-800 dark:border-slate-700"
+            >
+              İptal
+            </Button>
+            <Button 
+              onClick={handleSaveProject} 
+              disabled={savingProject || editAreas.some(a => a.isNew && a.work_items.length === 0)}
+            >
+              {savingProject ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Kaydet
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
