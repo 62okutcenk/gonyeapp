@@ -539,6 +539,25 @@ export default function DashboardLayout() {
           <div />
 
           <div className="flex items-center gap-4">
+            {/* Subscription Info - Only for Admin */}
+            {user?.is_admin && subscription?.is_active && (
+              <div 
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity",
+                  subscription.days_remaining <= 7 
+                    ? "bg-amber-100 text-amber-700 border border-amber-200" 
+                    : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                )}
+                onClick={() => navigate("/subscription")}
+              >
+                <Crown className="h-3.5 w-3.5" />
+                <span>{subscription.days_remaining} gün kaldı</span>
+                <span className="text-[10px] opacity-70">
+                  • {subscription.end_date ? new Date(subscription.end_date).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : ""}
+                </span>
+              </div>
+            )}
+            
             <CurrentTime />
             <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
 
