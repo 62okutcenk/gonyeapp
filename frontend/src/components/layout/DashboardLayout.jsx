@@ -54,6 +54,7 @@ import {
   CreditCard,
   Crown,
   CalendarDays,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,7 @@ const getNavGroups = (isAdmin) => {
       items: [
         { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
         { name: "Projeler", href: "/projects", icon: FolderKanban },
+        { name: "Müşteriler", href: "/customers", icon: UserCircle },
       ]
     },
     {
