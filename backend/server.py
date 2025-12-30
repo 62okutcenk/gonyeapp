@@ -2154,6 +2154,7 @@ async def get_project_payments(project_id: str, user: dict = Depends(get_current
 @api_router.delete("/projects/{project_id}/payments/{payment_id}")
 async def delete_project_payment(project_id: str, payment_id: str, user: dict = Depends(get_current_user)):
     check_permission(user, "projects.manage_finance")
+    await enforce_project_lock(project_id, user)
     
     payment = await db.project_payments.find_one({"id": payment_id, "project_id": project_id}, {"_id": 0})
     if not payment:
