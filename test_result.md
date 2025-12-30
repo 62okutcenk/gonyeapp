@@ -171,17 +171,17 @@ backend:
         comment: "New endpoints: GET/POST/PUT/DELETE /customers, GET /customers/{id}/stats, GET /customers/{id}/projects"
 
 frontend:
-  - task: "Setup wizard work item quick-add fix"
+  - task: "Setup wizard with subscription step"
     implemented: true
-    working: true
+    working: "NA"
     file: "/app/frontend/src/pages/SetupWizardPage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
-      - working: true
+      - working: "NA"
         agent: "main"
-        comment: "Fixed handleAddWorkItem to accept itemName parameter directly for quick suggestions"
+        comment: "Added payment step (step 4) with animated credit card form"
 
   - task: "Sidebar logo display with fallback avatar"
     implemented: true
@@ -201,11 +201,83 @@ frontend:
     file: "/app/frontend/src/components/layout/DashboardLayout.jsx"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Replaced Sheet with Popover for notifications on both mobile and desktop"
+
+  - task: "Subscription page for admin"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/SubscriptionPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "New page showing subscription status, remaining days, plan features"
+
+  - task: "Header subscription info badge for admin"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/layout/DashboardLayout.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added subscription badge in header showing remaining days and end date"
+
+  - task: "CustomersPage (CRM list)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/CustomersPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Customer list with search, type filter, stats, add/edit dialog"
+
+  - task: "CustomerDetailPage (CRM detail)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/CustomerDetailPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Customer profile with tabs: Projects, Financial, Files"
+
+  - task: "NewProjectPage customer selection"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/NewProjectPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added customer autocomplete with quick create dialog"
+
+  - task: "ProjectDetailPage customer link"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ProjectDetailPage.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Customer name in header is now clickable link to customer detail"
 
 metadata:
   created_by: "main_agent"
