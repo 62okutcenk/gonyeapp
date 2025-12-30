@@ -50,38 +50,55 @@ import {
   Moon,
   ChevronLeft,
   ChevronRight,
-  Briefcase
+  Briefcase,
+  CreditCard,
+  Crown,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-// ERP Tarzı Kategorize Edilmiş Navigasyon
-const navGroups = [
-  {
-    title: "GENEL",
-    items: [
-      { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
-      { name: "Projeler", href: "/projects", icon: FolderKanban },
-    ]
-  },
-  {
-    title: "YÖNETİM",
-    items: [
-      { name: "Kullanıcılar", href: "/users", icon: Users },
-    ]
-  },
-  {
-    title: "SİSTEM AYARLARI",
-    items: [
-      { name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers },
-      { name: "İş Kalemleri", href: "/setup/workitems", icon: Package },
-      { name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield },
-      { name: "Firma Ayarları", href: "/setup/settings", icon: Building2 },
-    ]
+// Nav groups will be dynamically generated based on user role
+const getNavGroups = (isAdmin) => {
+  const groups = [
+    {
+      title: "GENEL",
+      items: [
+        { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
+        { name: "Projeler", href: "/projects", icon: FolderKanban },
+      ]
+    },
+    {
+      title: "YÖNETİM",
+      items: [
+        { name: "Kullanıcılar", href: "/users", icon: Users },
+      ]
+    },
+    {
+      title: "SİSTEM AYARLARI",
+      items: [
+        { name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers },
+        { name: "İş Kalemleri", href: "/setup/workitems", icon: Package },
+        { name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield },
+        { name: "Firma Ayarları", href: "/setup/settings", icon: Building2 },
+      ]
+    }
+  ];
+
+  // Add subscription menu only for admin
+  if (isAdmin) {
+    groups.push({
+      title: "ABONELİK",
+      items: [
+        { name: "Abonelik Bilgileriniz", href: "/subscription", icon: Crown },
+      ]
+    });
   }
-];
+
+  return groups;
+};
 
 const NavItem = ({ item, onClick, collapsed }) => {
   if (collapsed) {
