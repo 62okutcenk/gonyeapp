@@ -2214,6 +2214,7 @@ async def get_project_tasks(project_id: str, area_id: str = None, user: dict = D
 @api_router.put("/projects/{project_id}/tasks/{task_id}")
 async def update_project_task(project_id: str, task_id: str, data: ProjectTaskUpdate, user: dict = Depends(get_current_user)):
     check_permission(user, "tasks.edit")
+    await enforce_project_lock(project_id, user)
     
     task = await db.project_tasks.find_one({"id": task_id, "project_id": project_id}, {"_id": 0})
     if not task:
