@@ -279,6 +279,30 @@ frontend:
         agent: "main"
         comment: "Customer name in header is now clickable link to customer detail"
 
+  - task: "Real-time notifications WebSocket"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/contexts/NotificationContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "WebSocket connection with auto-reconnect, toast notifications, sound, bell animation"
+
+  - task: "Notification bell animation"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/layout/DashboardLayout.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Bell shake animation and badge pulse when new notification arrives"
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
