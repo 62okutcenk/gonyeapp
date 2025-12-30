@@ -409,29 +409,41 @@ export default function DashboardLayout() {
   const [tenant, setTenant] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
+  const [subscription, setSubscription] = useState(null);
 
   const fetchData = async () => {
     try {
-      const [tenantRes, tasksRes] = await Promise.all([
+      const requests = [
         axios.get(`${API_URL}/tenant`),
-        axios.get(`${API_URL}/tasks/me`) // Kullanıcının görevlerini çek
-      ]);
-      setTenant(tenantRes.data);
+        axios.get(`${API_URL}/tasks/me`)
+      ];
+      
+      // Only fetch subscription for admin users
+      if (user?.is_admin) {
+        requests.push(axios.get(`${API_URL}/subscription`));
+      }
+
+      const responses = await Promise.all(requests);
+      setTenant(responses[0].data);
       
       // Tamamlanmamış görev sayısını hesapla
-      const pending = tasksRes.data.filter(t => t.status !== 'tamamlandi').length;
+      const pending = responses[1].data.filter(t => t.status !== 'tamamlandi').length;
       setPendingTaskCount(pending);
+
+      // Set subscription data for admin
+      if (user?.is_admin && responses[2]) {
+        setSubscription(responses[2].data);
+      }
     } catch (error) {
       console.error("Layout data fetch error:", error);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    // Periyodik olarak güncellemek istersen:
-    // const interval = setInterval(fetchData, 60000);
-    // return () => clearInterval(interval);
-  }, []); // Bağımlılık dizisi boş, sayfa yüklendiğinde çalışır. Route değişiminde tetiklenmesi için [location.pathname] eklenebilir.
+    if (user) {
+      fetchData();
+    }
+  }, [user?.is_admin]);
 
   const handleLogout = () => {
     logout();
