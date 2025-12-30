@@ -1842,6 +1842,21 @@ async def update_project(project_id: str, data: ProjectUpdate, user: dict = Depe
     new_status = update_data.get("status")
     status_changed = new_status and old_status != new_status
     
+    # If only status is being changed to unlock (resume), admin can do it
+    # Otherwise, check if project is locked
+    only_status_change = len([k for k in update_data.keys() if k not in ["status", "updated_at"]]) == 0
+    
+    if not only_status_change:
+        # Non-status changes require lock check
+        await enforce_project_lock(project_id, user)
+    elif status_changed and old_status in PROJECT_LOCKED_STATUSES:
+        # Changing from locked status requires admin
+        if not user.get("is_admin"):
+            raise HTTPException(
+                status_code=403, 
+                detail="Durdurulmuş veya tamamlanmış projenin durumunu yalnızca yönetici değiştirebilir."
+            )
+    
     # Log changes
     changes = []
     for key, value in update_data.items():
@@ -1872,6 +1887,24 @@ async def update_project(project_id: str, data: ProjectUpdate, user: dict = Depe
                 "🎉 Proje Tamamlandı!",
                 f"'{project_name}' projesi başarıyla tamamlandı. Tebrikler!",
                 "success",
+                f"/projects/{project_id}",
+                exclude_user_id=user["id"]
+            )
+        elif new_status == "durduruldu":
+            await notify_project_team(
+                project_id, user["tenant_id"],
+                "⏸️ Proje Durduruldu",
+                f"'{project_name}' projesi durduruldu.",
+                "warning",
+                f"/projects/{project_id}",
+                exclude_user_id=user["id"]
+            )
+        elif old_status == "durduruldu":
+            await notify_project_team(
+                project_id, user["tenant_id"],
+                "▶️ Proje Devam Ediyor",
+                f"'{project_name}' projesi yeniden aktif edildi.",
+                "info",
                 f"/projects/{project_id}",
                 exclude_user_id=user["id"]
             )
