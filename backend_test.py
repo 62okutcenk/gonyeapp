@@ -657,6 +657,115 @@ class CraftForgeAPITester:
         
         return success
 
+    def test_subscription_system(self):
+        """Test subscription system APIs"""
+        print("\n🔍 Testing Subscription System...")
+        
+        # Test 1: Get subscription plan (public endpoint)
+        success, plan = self.run_test(
+            "Get Subscription Plan",
+            "GET",
+            "subscription/plan",
+            200
+        )
+        
+        if success:
+            # Verify plan structure
+            expected_fields = ["id", "name", "price", "currency", "period", "features"]
+            all_fields_present = all(field in plan for field in expected_fields)
+            
+            if all_fields_present:
+                self.log_test("Subscription Plan Structure", True, "All expected fields present")
+                
+                # Verify specific values
+                if (plan.get("name") == "Gönye Planı" and 
+                    plan.get("price") == 2500.0 and 
+                    plan.get("currency") == "TRY" and 
+                    plan.get("period") == "monthly"):
+                    self.log_test("Subscription Plan Values", True, "Plan details correct")
+                else:
+                    self.log_test("Subscription Plan Values", False, "", f"Plan details incorrect: {plan}")
+            else:
+                missing_fields = [f for f in expected_fields if f not in plan]
+                self.log_test("Subscription Plan Structure", False, "", f"Missing fields: {missing_fields}")
+        
+        # Test 2: Get current subscription status (requires auth)
+        success, subscription = self.run_test(
+            "Get Current Subscription Status",
+            "GET",
+            "subscription",
+            200
+        )
+        
+        if success:
+            # Verify subscription structure
+            expected_fields = ["is_active", "plan_name", "start_date", "end_date", "days_remaining"]
+            all_fields_present = all(field in subscription for field in expected_fields)
+            
+            if all_fields_present:
+                self.log_test("Subscription Status Structure", True, "All expected fields present")
+                
+                # Should be inactive initially
+                if not subscription.get("is_active"):
+                    self.log_test("Initial Subscription Status", True, "Subscription inactive as expected")
+                else:
+                    self.log_test("Initial Subscription Status", False, "", "Subscription should be inactive initially")
+            else:
+                missing_fields = [f for f in expected_fields if f not in subscription]
+                self.log_test("Subscription Status Structure", False, "", f"Missing fields: {missing_fields}")
+        
+        # Test 3: Activate subscription (requires admin auth)
+        if self.user_data and self.user_data.get("is_admin"):
+            activation_data = {
+                "card_holder_name": "TEST USER",
+                "card_number": "4111111111111111",
+                "expiry_month": "12",
+                "expiry_year": "25",
+                "cvv": "123"
+            }
+            
+            success, activated_subscription = self.run_test(
+                "Activate Subscription",
+                "POST",
+                "subscription/activate",
+                200,
+                data=activation_data
+            )
+            
+            if success:
+                # Verify activation response
+                if (activated_subscription.get("is_active") and 
+                    activated_subscription.get("plan_name") == "Gönye Planı" and
+                    activated_subscription.get("days_remaining") == 30):
+                    self.log_test("Subscription Activation", True, "Subscription activated successfully")
+                    
+                    # Test 4: Verify subscription is now active
+                    success, updated_subscription = self.run_test(
+                        "Verify Subscription Active",
+                        "GET",
+                        "subscription",
+                        200
+                    )
+                    
+                    if success and updated_subscription.get("is_active"):
+                        self.log_test("Subscription Status After Activation", True, "Subscription is now active")
+                        
+                        # Verify dates are set
+                        if (updated_subscription.get("start_date") and 
+                            updated_subscription.get("end_date") and
+                            updated_subscription.get("days_remaining") > 0):
+                            self.log_test("Subscription Dates", True, "Start and end dates properly set")
+                        else:
+                            self.log_test("Subscription Dates", False, "", "Subscription dates not properly set")
+                    else:
+                        self.log_test("Subscription Status After Activation", False, "", "Subscription should be active after activation")
+                else:
+                    self.log_test("Subscription Activation", False, "", f"Activation response incorrect: {activated_subscription}")
+        else:
+            self.log_test("Subscription Activation Test", False, "", "User is not admin - cannot test activation")
+        
+        return success
+
     def run_all_tests(self):
         """Run all tests"""
         print("🚀 Starting CraftForge API Tests...")
