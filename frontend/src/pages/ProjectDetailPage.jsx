@@ -900,6 +900,17 @@ export default function ProjectDetailPage() {
                       </div>
                       
                       <div className="flex gap-2">
+                          {/* Edit Button */}
+                          {projectLockStatus.can_modify && (
+                            <Button 
+                              variant="secondary" 
+                              className="bg-white/10 text-white hover:bg-white/20 border-0 backdrop-blur-sm"
+                              onClick={openEditDialog}
+                            >
+                              <PenLine className="mr-2 h-4 w-4" /> Düzenle
+                            </Button>
+                          )}
+                          
                           {/* Project Status Actions */}
                           {currentUser?.is_admin && project.status !== "tamamlandi" && project.status !== "durduruldu" && (
                             <>
