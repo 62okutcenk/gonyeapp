@@ -572,6 +572,41 @@ async def create_notification(user_id: str, tenant_id: str, title: str, message:
     
     return notification
 
+# Helper function to get project assigned user IDs
+async def get_project_assigned_users(project_id: str, include_creator: bool = True):
+    """Get all user IDs assigned to a project"""
+    user_ids = set()
+    
+    # Get project creator
+    if include_creator:
+        project = await db.projects.find_one({"id": project_id}, {"created_by": 1, "_id": 0})
+        if project and project.get("created_by"):
+            user_ids.add(project["created_by"])
+    
+    # Get assigned users
+    assignments = await db.project_assignments.find(
+        {"project_id": project_id},
+        {"user_id": 1, "_id": 0}
+    ).to_list(100)
+    
+    for a in assignments:
+        if a.get("user_id"):
+            user_ids.add(a["user_id"])
+    
+    return list(user_ids)
+
+# Helper function to notify project team
+async def notify_project_team(project_id: str, tenant_id: str, title: str, message: str, 
+                              notification_type: str = "info", link: str = None,
+                              exclude_user_id: str = None):
+    """Send notification to all users assigned to a project"""
+    user_ids = await get_project_assigned_users(project_id)
+    
+    for user_id in user_ids:
+        if exclude_user_id and user_id == exclude_user_id:
+            continue
+        await create_notification(user_id, tenant_id, title, message, notification_type, link)
+
 # ==================== DEFAULT PERMISSIONS ====================
 
 DEFAULT_PERMISSIONS = [
