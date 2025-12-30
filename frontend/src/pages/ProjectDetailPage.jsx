@@ -118,6 +118,8 @@ const projectStatusLabels = {
   montaj: "Montaj",
   kontrol: "Kontrol",
   tamamlandi: "Tamamlandı",
+  durduruldu: "Durduruldu",
+  iptal: "İptal",
 };
 
 const projectStatusStyles = {
@@ -126,6 +128,8 @@ const projectStatusStyles = {
   montaj: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
   kontrol: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
   tamamlandi: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800",
+  durduruldu: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800",
+  iptal: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
 };
 
 const taskStatusOptions = [
