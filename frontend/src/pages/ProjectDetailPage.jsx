@@ -740,6 +740,48 @@ export default function ProjectDetailPage() {
                       </div>
                       
                       <div className="flex gap-2">
+                          {/* Project Status Actions */}
+                          {currentUser?.is_admin && project.status !== "tamamlandi" && project.status !== "durduruldu" && (
+                            <>
+                              <Button 
+                                variant="secondary" 
+                                className="bg-amber-500/90 hover:bg-amber-500 text-white border-0"
+                                onClick={() => setShowStopDialog(true)}
+                              >
+                                <Pause className="mr-2 h-4 w-4" /> Durdur
+                              </Button>
+                              <Button 
+                                variant="secondary" 
+                                className="bg-emerald-500/90 hover:bg-emerald-500 text-white border-0"
+                                onClick={() => setShowCompleteDialog(true)}
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" /> Tamamla
+                              </Button>
+                            </>
+                          )}
+                          
+                          {/* Resume button for stopped projects */}
+                          {currentUser?.is_admin && project.status === "durduruldu" && (
+                            <Button 
+                              variant="secondary" 
+                              className="bg-blue-500/90 hover:bg-blue-500 text-white border-0"
+                              onClick={() => setShowResumeDialog(true)}
+                            >
+                              <Play className="mr-2 h-4 w-4" /> Devam Ettir
+                            </Button>
+                          )}
+                          
+                          {/* Reopen button for completed projects */}
+                          {currentUser?.is_admin && project.status === "tamamlandi" && (
+                            <Button 
+                              variant="secondary" 
+                              className="bg-blue-500/90 hover:bg-blue-500 text-white border-0"
+                              onClick={() => setShowResumeDialog(true)}
+                            >
+                              <Play className="mr-2 h-4 w-4" /> Yeniden Aç
+                            </Button>
+                          )}
+                          
                           <Button variant="secondary" className="bg-white text-slate-900 hover:bg-slate-100 border-0" onClick={exportExcel}>
                              <Wallet className="mr-2 h-4 w-4 text-emerald-600" /> Excel
                           </Button>
