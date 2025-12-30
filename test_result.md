@@ -128,7 +128,7 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
@@ -140,11 +140,35 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added /api/public/files/{file_id} endpoint for logo access without auth"
+
+  - task: "Subscription API endpoints"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "GET /subscription/plan, GET /subscription, POST /subscription/activate all working"
+
+  - task: "Customer CRM API endpoints"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "New endpoints: GET/POST/PUT/DELETE /customers, GET /customers/{id}/stats, GET /customers/{id}/projects"
 
 frontend:
   - task: "Setup wizard work item quick-add fix"
