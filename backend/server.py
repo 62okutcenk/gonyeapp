@@ -1825,6 +1825,16 @@ async def get_project(project_id: str, user: dict = Depends(get_current_user)):
         "progress": progress
     }
 
+# Check project lock status
+@api_router.get("/projects/{project_id}/lock-status")
+async def get_project_lock_status(project_id: str, user: dict = Depends(get_current_user)):
+    """Get project lock status (completed/stopped)"""
+    if not await can_access_project(user, project_id):
+        raise HTTPException(status_code=403, detail="Bu projeye erişim yetkiniz yok")
+    
+    lock_info = await check_project_locked(project_id, user)
+    return lock_info
+
 # Update project
 @api_router.put("/projects/{project_id}")
 async def update_project(project_id: str, data: ProjectUpdate, user: dict = Depends(get_current_user)):
