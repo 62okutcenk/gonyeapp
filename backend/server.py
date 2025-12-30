@@ -2565,6 +2565,19 @@ async def upload_file(
             area_id, area_name,
             {"file_id": file_id, "category": category, "task_id": task_id, "work_item_id": work_item_id}
         )
+        
+        # Send notification to project team about file upload
+        project = await db.projects.find_one({"id": project_id}, {"name": 1, "_id": 0})
+        project_name = project.get("name", "Proje") if project else "Proje"
+        
+        await notify_project_team(
+            project_id, user["tenant_id"],
+            "📁 Yeni Dosya Yüklendi",
+            f"'{project_name}' projesine '{file.filename}' dosyası eklendi.",
+            "info",
+            f"/projects/{project_id}",
+            exclude_user_id=user["id"]
+        )
 
     return {
         "id": file_id,
