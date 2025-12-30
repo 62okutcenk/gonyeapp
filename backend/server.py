@@ -554,8 +554,12 @@ PROJECT_STATUS_LABELS = {
     "montaj": "Montaj",
     "kontrol": "Kontrol",
     "tamamlandi": "Tamamlandı",
+    "durduruldu": "Durduruldu",
     "iptal": "İptal"
 }
+
+# Locked statuses (only admin can modify)
+PROJECT_LOCKED_STATUSES = ["tamamlandi", "durduruldu"]
 
 async def create_notification(user_id: str, tenant_id: str, title: str, message: str, 
                             notification_type: str = "info", link: str = None):
