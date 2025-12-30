@@ -230,7 +230,7 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
-          {navGroups.map((group, index) => (
+          {getNavGroups(user?.is_admin).map((group, index) => (
             <div key={index} className="mb-4 last:mb-0">
               {/* Grup Başlığı */}
               {!collapsed && (
