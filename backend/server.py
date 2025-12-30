@@ -1944,6 +1944,7 @@ async def delete_project(project_id: str, user: dict = Depends(get_current_user)
 @api_router.post("/projects/{project_id}/areas")
 async def create_project_area(project_id: str, data: ProjectAreaCreate, user: dict = Depends(get_current_user)):
     check_permission(user, "projects.edit")
+    await enforce_project_lock(project_id, user)
     
     project = await db.projects.find_one({"id": project_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
     if not project:
