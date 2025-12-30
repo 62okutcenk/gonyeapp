@@ -322,6 +322,7 @@ class ProjectActivityResponse(BaseModel):
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    customer_id: Optional[str] = None  # CRM müşteri ID'si
     customer_name: str
     customer_phone: Optional[str] = None
     customer_email: Optional[str] = None
@@ -332,6 +333,7 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    customer_id: Optional[str] = None
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
     customer_email: Optional[str] = None
