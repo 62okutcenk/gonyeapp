@@ -616,7 +616,16 @@ export default function ProjectDetailPage() {
                         </div>
                         <p className="text-lg text-slate-300 flex items-center gap-2">
                             <Building2 className="h-5 w-5 text-indigo-400" />
-                            {project.customer_name}
+                            {project.customer_id ? (
+                              <Link 
+                                to={`/customers/${project.customer_id}`}
+                                className="hover:text-white hover:underline transition-colors"
+                              >
+                                {project.customer_name}
+                              </Link>
+                            ) : (
+                              project.customer_name
+                            )}
                         </p>
                     </div>
 
