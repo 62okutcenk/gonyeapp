@@ -109,6 +109,34 @@ class TenantResponse(BaseModel):
     dark_logo_url: Optional[str] = None
     setup_completed: bool = False
     created_at: str
+    # Subscription fields
+    subscription_active: bool = False
+    subscription_start: Optional[str] = None
+    subscription_end: Optional[str] = None
+    subscription_plan: Optional[str] = None
+
+# Subscription Models
+class SubscriptionPlan(BaseModel):
+    id: str = "gonye_plan"
+    name: str = "Gönye Planı"
+    price: float = 2500.0
+    currency: str = "TRY"
+    period: str = "monthly"  # monthly, yearly
+    features: List[str] = []
+
+class SubscriptionActivate(BaseModel):
+    card_holder_name: str
+    card_number: str  # Will be masked, not stored
+    expiry_month: str
+    expiry_year: str
+    cvv: str  # Will not be stored
+
+class SubscriptionResponse(BaseModel):
+    is_active: bool
+    plan_name: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    days_remaining: int = 0
 
 # Role & Permission Models
 class PermissionCreate(BaseModel):
