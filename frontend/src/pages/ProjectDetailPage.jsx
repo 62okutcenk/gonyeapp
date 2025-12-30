@@ -231,10 +231,12 @@ export default function ProjectDetailPage() {
   const [paymentDialog, setPaymentDialog] = useState(false);
   const [teamDialog, setTeamDialog] = useState(false);
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(false);
+  const [editProjectDialog, setEditProjectDialog] = useState(false);
   
   // Deletion States
   const [deletePaymentId, setDeletePaymentId] = useState(null);
   const [deleteAssignmentId, setDeleteAssignmentId] = useState(null);
+  const [deleteAreaId, setDeleteAreaId] = useState(null);
 
   // Comments State
   const [comments, setComments] = useState([]);
@@ -242,6 +244,20 @@ export default function ProjectDetailPage() {
   const [loadingComments, setLoadingComments] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
   const commentsEndRef = useRef(null);
+
+  // Edit Project State
+  const [workItems, setWorkItems] = useState([]);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    customer_name: "",
+    customer_phone: "",
+    customer_email: "",
+    due_date: "",
+  });
+  const [editAreas, setEditAreas] = useState([]);
+  const [savingProject, setSavingProject] = useState(false);
+  const [editingAreaId, setEditingAreaId] = useState(null);
 
   // Forms
   const [paymentForm, setPaymentForm] = useState({
