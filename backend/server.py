@@ -94,6 +94,10 @@ class TenantUpdate(BaseModel):
     light_logo_url: Optional[str] = None
     dark_logo_url: Optional[str] = None
     setup_completed: Optional[bool] = None
+    subscription_active: Optional[bool] = None
+    subscription_start: Optional[str] = None
+    subscription_end: Optional[str] = None
+    subscription_plan: Optional[str] = None
 
 class TenantResponse(BaseModel):
     id: str
