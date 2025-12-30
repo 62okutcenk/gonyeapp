@@ -99,7 +99,12 @@ import {
   Download,
   Send,
   Loader2,
-  X
+  X,
+  Pause,
+  Play,
+  CheckCircle,
+  AlertTriangle,
+  Lock,
 } from "lucide-react";
 
 import * as XLSX from "xlsx";
