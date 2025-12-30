@@ -635,6 +635,142 @@ export default function ProjectDetailPage() {
     }
   };
 
+  // Edit Project Functions
+  const openEditDialog = () => {
+    if (!project) return;
+    setEditForm({
+      name: project.name || "",
+      description: project.description || "",
+      customer_name: project.customer_name || "",
+      customer_phone: project.customer_phone || "",
+      customer_email: project.customer_email || "",
+      due_date: project.due_date || "",
+    });
+    setEditAreas(project.areas?.map(a => ({
+      id: a.id,
+      name: a.name,
+      address: a.address || "",
+      city: a.city || "",
+      district: a.district || "",
+      agreed_price: a.agreed_price || 0,
+      work_items: a.work_items || [],
+      isNew: false,
+      isEditing: false,
+    })) || []);
+    setEditProjectDialog(true);
+  };
+
+  const handleSaveProject = async () => {
+    if (!editForm.name.trim()) {
+      toast.error("Proje adı zorunludur");
+      return;
+    }
+    
+    setSavingProject(true);
+    try {
+      // Update project basic info
+      await axios.put(`${API_URL}/projects/${projectId}`, {
+        name: editForm.name,
+        description: editForm.description,
+        customer_name: editForm.customer_name,
+        customer_phone: editForm.customer_phone,
+        customer_email: editForm.customer_email,
+        due_date: editForm.due_date || null,
+      });
+      
+      // Handle area updates
+      for (const area of editAreas) {
+        if (area.isNew) {
+          // Create new area
+          await axios.post(`${API_URL}/projects/${projectId}/areas`, {
+            name: area.name,
+            address: area.address,
+            city: area.city,
+            district: area.district,
+            agreed_price: parseFloat(area.agreed_price) || 0,
+            work_items: area.work_items.map(wi => ({
+              work_item_id: wi.work_item_id,
+              work_item_name: wi.work_item_name,
+              quantity: 1,
+            })),
+          });
+        } else {
+          // Update existing area
+          await axios.put(`${API_URL}/projects/${projectId}/areas/${area.id}`, {
+            name: area.name,
+            address: area.address,
+            city: area.city,
+            district: area.district,
+            agreed_price: parseFloat(area.agreed_price) || 0,
+          });
+        }
+      }
+      
+      await fetchProject();
+      await fetchTasks();
+      toast.success("Proje güncellendi");
+      setEditProjectDialog(false);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Güncelleme başarısız");
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const handleAddNewArea = () => {
+    setEditAreas(prev => [...prev, {
+      id: `new-${Date.now()}`,
+      name: "",
+      address: "",
+      city: "",
+      district: "",
+      agreed_price: 0,
+      work_items: [],
+      isNew: true,
+      isEditing: true,
+    }]);
+  };
+
+  const handleUpdateEditArea = (areaId, field, value) => {
+    setEditAreas(prev => prev.map(a => 
+      a.id === areaId ? { ...a, [field]: value } : a
+    ));
+  };
+
+  const handleToggleWorkItem = (areaId, workItem) => {
+    setEditAreas(prev => prev.map(a => {
+      if (a.id !== areaId) return a;
+      const exists = a.work_items.some(wi => wi.work_item_id === workItem.id);
+      if (exists) {
+        return { ...a, work_items: a.work_items.filter(wi => wi.work_item_id !== workItem.id) };
+      } else {
+        return { ...a, work_items: [...a.work_items, { work_item_id: workItem.id, work_item_name: workItem.name }] };
+      }
+    }));
+  };
+
+  const handleRemoveEditArea = (areaId) => {
+    const area = editAreas.find(a => a.id === areaId);
+    if (area?.isNew) {
+      setEditAreas(prev => prev.filter(a => a.id !== areaId));
+    } else {
+      setDeleteAreaId(areaId);
+    }
+  };
+
+  const handleDeleteArea = async () => {
+    if (!deleteAreaId) return;
+    try {
+      await axios.delete(`${API_URL}/projects/${projectId}/areas/${deleteAreaId}`);
+      setEditAreas(prev => prev.filter(a => a.id !== deleteAreaId));
+      toast.success("Alan silindi");
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Alan silinemedi");
+    } finally {
+      setDeleteAreaId(null);
+    }
+  };
+
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(12);
