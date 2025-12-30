@@ -2022,6 +2022,7 @@ async def delete_project_area(project_id: str, area_id: str, user: dict = Depend
 @api_router.post("/projects/{project_id}/assignments")
 async def create_project_assignment(project_id: str, data: ProjectAssignmentCreate, user: dict = Depends(get_current_user)):
     check_permission(user, "projects.assign_staff")
+    await enforce_project_lock(project_id, user)
     
     project = await db.projects.find_one({"id": project_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
     if not project:
