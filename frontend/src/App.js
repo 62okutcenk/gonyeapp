@@ -117,6 +117,7 @@ function AppRoutes() {
         <Route path="setup/workitems" element={<SetupWorkItemsPage />} />
         <Route path="setup/roles" element={<SetupRolesPage />} />
         <Route path="setup/settings" element={<SetupSettingsPage />} />
+        <Route path="subscription" element={<SubscriptionPage />} />
       </Route>
       
       {/* Catch all */}
