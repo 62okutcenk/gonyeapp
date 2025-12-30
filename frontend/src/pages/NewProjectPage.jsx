@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -28,12 +49,26 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Search,
+  Check,
+  UserPlus,
+  Building2,
+  HardHat,
+  Briefcase,
+  Phone,
 } from "lucide-react";
 import { getCities, getDistricts } from "@/data/turkeyData";
 import { formatCurrency, formatPhoneNumber } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
+
+const customerTypes = [
+  { value: "bireysel", label: "Bireysel", icon: User },
+  { value: "mimar", label: "Mimar", icon: Building2 },
+  { value: "muteahhit", label: "Müteahhit", icon: HardHat },
+  { value: "kurumsal", label: "Kurumsal", icon: Briefcase },
+];
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
@@ -42,10 +77,25 @@ export default function NewProjectPage() {
   const [users, setUsers] = useState([]);
   const [expandedArea, setExpandedArea] = useState(0);
 
+  // Customer state
+  const [customers, setCustomers] = useState([]);
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [newCustomerDialogOpen, setNewCustomerDialogOpen] = useState(false);
+  const [savingCustomer, setSavingCustomer] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    type: "bireysel",
+    name: "",
+    phone: "",
+    email: "",
+  });
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    customer_id: "",
     customer_name: "",
     customer_phone: "",
     customer_email: "",
@@ -71,6 +121,7 @@ export default function NewProjectPage() {
   useEffect(() => {
     fetchWorkItems();
     fetchUsers();
+    fetchCustomers();
   }, []);
 
   const fetchWorkItems = async () => {
@@ -88,6 +139,68 @@ export default function NewProjectPage() {
       setUsers(response.data);
     } catch (error) {
       console.error("Failed to fetch users:", error);
+    }
+  };
+
+  const fetchCustomers = async (search = "") => {
+    try {
+      const params = search ? `?search=${encodeURIComponent(search)}` : "";
+      const response = await axios.get(`${API_URL}/customers${params}`);
+      setCustomers(response.data);
+    } catch (error) {
+      console.error("Failed to fetch customers:", error);
+    }
+  };
+
+  const handleSelectCustomer = (customer) => {
+    setSelectedCustomer(customer);
+    setFormData((prev) => ({
+      ...prev,
+      customer_id: customer.id,
+      customer_name: customer.name,
+      customer_phone: customer.phone || "",
+      customer_email: customer.email || "",
+    }));
+    setCustomerSearchOpen(false);
+  };
+
+  const handleClearCustomer = () => {
+    setSelectedCustomer(null);
+    setFormData((prev) => ({
+      ...prev,
+      customer_id: "",
+      customer_name: "",
+      customer_phone: "",
+      customer_email: "",
+    }));
+  };
+
+  const handleCreateNewCustomer = async () => {
+    if (!newCustomerForm.name.trim() || !newCustomerForm.phone.trim()) {
+      toast.error("İsim ve telefon zorunludur");
+      return;
+    }
+
+    setSavingCustomer(true);
+    try {
+      const response = await axios.post(`${API_URL}/customers`, newCustomerForm);
+      const newCustomer = response.data;
+      
+      // Select the new customer
+      handleSelectCustomer(newCustomer);
+      
+      // Refresh customers list
+      fetchCustomers();
+      
+      // Close dialog and reset form
+      setNewCustomerDialogOpen(false);
+      setNewCustomerForm({ type: "bireysel", name: "", phone: "", email: "" });
+      
+      toast.success("Müşteri oluşturuldu ve seçildi");
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Müşteri oluşturulamadı");
+    } finally {
+      setSavingCustomer(false);
     }
   };
 
@@ -209,7 +322,7 @@ export default function NewProjectPage() {
       return;
     }
     if (!formData.customer_name.trim()) {
-      toast.error("Müşteri adı gereklidir");
+      toast.error("Müşteri seçimi veya müşteri adı gereklidir");
       return;
     }
 
@@ -273,6 +386,12 @@ export default function NewProjectPage() {
 
   const totalAgreed = areas.reduce((sum, area) => sum + (parseFloat(area.agreed_price) || 0), 0);
 
+  // Filter customers based on search
+  const filteredCustomers = customers.filter((c) =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.phone?.includes(customerSearch)
+  );
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
@@ -317,53 +436,141 @@ export default function NewProjectPage() {
           </CardContent>
         </Card>
 
-        {/* Customer Info */}
+        {/* Customer Selection */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <User className="h-5 w-5" />
-              Müşteri Bilgileri
+              Müşteri Seçimi
             </CardTitle>
+            <CardDescription>
+              Mevcut müşterilerden seçin veya yeni müşteri ekleyin
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="customer_name">Müşteri Adı *</Label>
-                <Input
-                  id="customer_name"
-                  value={formData.customer_name}
-                  onChange={(e) => handleFormChange("customer_name", e.target.value)}
-                  placeholder="Örn: Ahmet Yılmaz"
-                />
+            {selectedCustomer ? (
+              // Selected Customer Card
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="font-semibold text-primary">
+                      {selectedCustomer.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium">{selectedCustomer.name}</p>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      {selectedCustomer.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {selectedCustomer.phone}
+                        </span>
+                      )}
+                      {selectedCustomer.type && (
+                        <Badge variant="secondary" className="text-xs">
+                          {customerTypes.find(t => t.value === selectedCustomer.type)?.label || selectedCustomer.type}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleClearCustomer}>
+                  Değiştir
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="customer_phone">Telefon</Label>
-                <Input
-                  id="customer_phone"
-                  value={formData.customer_phone}
-                  onChange={(e) => handlePhoneChange(e.target.value)}
-                  placeholder="0 (xxx) xxx xx xx"
-                />
+            ) : (
+              // Customer Search / Add
+              <div className="flex gap-2">
+                <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={customerSearchOpen}
+                      className="flex-1 justify-between"
+                    >
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Search className="h-4 w-4" />
+                        Müşteri ara veya seç...
+                      </span>
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput 
+                        placeholder="İsim veya telefon ile ara..." 
+                        value={customerSearch}
+                        onValueChange={setCustomerSearch}
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          <div className="py-6 text-center">
+                            <p className="text-sm text-muted-foreground mb-3">Müşteri bulunamadı</p>
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                setNewCustomerForm(prev => ({ ...prev, name: customerSearch }));
+                                setNewCustomerDialogOpen(true);
+                                setCustomerSearchOpen(false);
+                              }}
+                            >
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Yeni Müşteri Oluştur
+                            </Button>
+                          </div>
+                        </CommandEmpty>
+                        <CommandGroup heading="Müşteriler">
+                          {filteredCustomers.slice(0, 10).map((customer) => (
+                            <CommandItem
+                              key={customer.id}
+                              value={customer.name}
+                              onSelect={() => handleSelectCustomer(customer)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3 flex-1">
+                                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                  <span className="text-xs font-medium">
+                                    {customer.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{customer.name}</p>
+                                  <p className="text-xs text-muted-foreground">{customer.phone}</p>
+                                </div>
+                              </div>
+                              <Check className={cn(
+                                "ml-auto h-4 w-4",
+                                selectedCustomer?.id === customer.id ? "opacity-100" : "opacity-0"
+                              )} />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => setNewCustomerDialogOpen(true)}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Yeni
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="customer_email">E-posta</Label>
-                <Input
-                  id="customer_email"
-                  type="email"
-                  value={formData.customer_email}
-                  onChange={(e) => handleFormChange("customer_email", e.target.value)}
-                  placeholder="musteri@email.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="due_date">Termin Tarihi</Label>
-                <Input
-                  id="due_date"
-                  type="date"
-                  value={formData.due_date}
-                  onChange={(e) => handleFormChange("due_date", e.target.value)}
-                />
-              </div>
+            )}
+
+            {/* Due Date */}
+            <div className="space-y-2">
+              <Label htmlFor="due_date">Termin Tarihi</Label>
+              <Input
+                id="due_date"
+                type="date"
+                value={formData.due_date}
+                onChange={(e) => handleFormChange("due_date", e.target.value)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -406,7 +613,7 @@ export default function NewProjectPage() {
                       </Badge>
                     )}
                     {area.agreed_price > 0 && (
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="text-green-600">
                         {formatCurrency(area.agreed_price)}
                       </Badge>
                     )}
@@ -417,13 +624,13 @@ export default function NewProjectPage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive"
+                        className="h-8 w-8"
                         onClick={(e) => {
                           e.stopPropagation();
                           removeArea(areaIndex);
                         }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     )}
                     {expandedArea === areaIndex ? (
@@ -437,30 +644,29 @@ export default function NewProjectPage() {
                 {/* Area Content */}
                 {expandedArea === areaIndex && (
                   <div className="p-4 space-y-4 border-t">
+                    {/* Area Name & Address */}
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Alan Adı *</Label>
                         <Input
                           value={area.name}
                           onChange={(e) => updateArea(areaIndex, "name", e.target.value)}
-                          placeholder="Örn: Mutfak, Gardrop, Yatak Odası"
+                          placeholder="Örn: Mutfak, Gardrop"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Anlaşma Bedeli (₺)</Label>
+                        <Label>Adres</Label>
                         <Input
-                          type="number"
-                          min="0"
-                          value={area.agreed_price || ""}
-                          onChange={(e) => updateArea(areaIndex, "agreed_price", parseFloat(e.target.value) || 0)}
-                          placeholder="0"
+                          value={area.address}
+                          onChange={(e) => updateArea(areaIndex, "address", e.target.value)}
+                          placeholder="Açık adres (opsiyonel)"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>İl</Label>
                         <Select
                           value={area.city}
-                          onValueChange={(value) => updateArea(areaIndex, "city", value)}
+                          onValueChange={(v) => updateArea(areaIndex, "city", v)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="İl seçin" />
@@ -478,7 +684,7 @@ export default function NewProjectPage() {
                         <Label>İlçe</Label>
                         <Select
                           value={area.district}
-                          onValueChange={(value) => updateArea(areaIndex, "district", value)}
+                          onValueChange={(v) => updateArea(areaIndex, "district", v)}
                           disabled={!area.city}
                         >
                           <SelectTrigger>
@@ -493,195 +699,280 @@ export default function NewProjectPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label>Açık Adres</Label>
-                        <Textarea
-                          value={area.address}
-                          onChange={(e) => updateArea(areaIndex, "address", e.target.value)}
-                          placeholder="Mahalle, Sokak, Bina No..."
-                          rows={2}
-                        />
-                      </div>
                     </div>
 
-                    {/* Work Items */}
+                    {/* Work Items Selection */}
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
-                        İş Kalemleri
+                        İş Kalemleri *
                       </Label>
-                      {workItems.length === 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {workItems.map((item) => {
+                          const isSelected = area.work_items.some(
+                            (wi) => wi.work_item_id === item.id
+                          );
+                          return (
+                            <Badge
+                              key={item.id}
+                              variant={isSelected ? "default" : "outline"}
+                              className={cn(
+                                "cursor-pointer transition-colors",
+                                isSelected && "bg-primary"
+                              )}
+                              onClick={() => toggleWorkItem(areaIndex, item.id, item.name)}
+                            >
+                              {item.name}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                      {workItems.length === 0 && (
                         <p className="text-sm text-muted-foreground">
-                          Henüz iş kalemi tanımlanmamış. Kurulum bölümünden ekleyebilirsiniz.
+                          Henüz iş kalemi tanımlanmamış.{" "}
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="p-0 h-auto"
+                            onClick={() => navigate("/setup/workitems")}
+                          >
+                            İş Kalemleri sayfasından ekleyin
+                          </Button>
                         </p>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {workItems.map((item) => {
-                            const isSelected = area.work_items.some(
-                              (wi) => wi.work_item_id === item.id
-                            );
-                            const checkboxId = `wi-${areaIndex}-${item.id}`;
-                            
-                            // DÜZELTME BURADA YAPILDI:
-                            // 1. Div'den onClick kaldırıldı.
-                            // 2. Checkbox'tan pointer-events-none kaldırıldı.
-                            // 3. onCheckedChange eklendi.
-                            // 4. Label htmlFor eklendi.
-                            return (
-                              <div
-                                key={item.id}
-                                className={cn(
-                                  "flex items-center space-x-2 p-2 rounded-md border transition-colors",
-                                  isSelected
-                                    ? "bg-primary/10 border-primary"
-                                    : "hover:bg-muted"
-                                )}
-                              >
-                                <Checkbox 
-                                  id={checkboxId}
-                                  checked={isSelected} 
-                                  onCheckedChange={() => toggleWorkItem(areaIndex, item.id, item.name)}
-                                />
-                                <Label 
-                                  htmlFor={checkboxId}
-                                  className="text-sm font-normal cursor-pointer flex-1"
-                                >
-                                  {item.name}
-                                </Label>
-                              </div>
-                            );
-                          })}
-                        </div>
                       )}
+                    </div>
+
+                    {/* Price */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        Anlaşma Bedeli
+                      </Label>
+                      <Input
+                        type="number"
+                        value={area.agreed_price || ""}
+                        onChange={(e) =>
+                          updateArea(areaIndex, "agreed_price", parseFloat(e.target.value) || 0)
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+
+                    {/* Area Assignments */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Alan Personeli
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {assignments
+                          .filter((a) => a.assignment_type === "area" && a.areaIndex === areaIndex)
+                          .map((assignment, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="gap-1 pr-1"
+                            >
+                              {assignment.user_name}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 ml-1 hover:bg-transparent"
+                                onClick={() =>
+                                  removeAssignment(
+                                    assignments.findIndex(
+                                      (a) =>
+                                        a.user_id === assignment.user_id &&
+                                        a.assignment_type === "area" &&
+                                        a.areaIndex === areaIndex
+                                    )
+                                  )
+                                }
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                      </div>
+                      <Select
+                        value=""
+                        onValueChange={(userId) => addAssignment(userId, "area", areaIndex)}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="Personel ekle..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 )}
               </div>
             ))}
-
-            {/* Total */}
-            {totalAgreed > 0 && (
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                <span className="font-medium">Toplam Anlaşma Bedeli:</span>
-                <span className="text-lg font-bold">{formatCurrency(totalAgreed)}</span>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        {/* Staff Assignments */}
+        {/* Project-level Assignments */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Personel Atama
+              Proje Ekibi
             </CardTitle>
             <CardDescription>
-              Projeye veya belirli alanlara personel atayın
+              Tüm alanlarda çalışacak personeli atayın
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Project-level assignment */}
-            <div className="space-y-2">
-              <Label>Tüm Projeye Erişim</Label>
-              <div className="flex gap-2">
-                <Select onValueChange={(value) => addAssignment(value, "project")}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Personel seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Area-level assignments */}
-            {areas.length > 0 && areas[0].name && (
-              <div className="space-y-2">
-                <Label>Belirli Alana Erişim</Label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {areas.map((area, idx) =>
-                    area.name ? (
-                      <div key={idx} className="flex gap-2">
-                        <Select
-                          onValueChange={(value) => addAssignment(value, "area", idx)}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder={`${area.name} için personel`} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {users.map((user) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.full_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : null
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Assignment List */}
-            {assignments.length > 0 && (
-              <div className="space-y-2">
-                <Label>Atanan Personeller</Label>
-                <div className="flex flex-wrap gap-2">
-                  {assignments.map((a, idx) => (
-                    <Badge
-                      key={idx}
-                      variant="secondary"
-                      className="flex items-center gap-1 py-1.5"
+            <div className="flex flex-wrap gap-2">
+              {assignments
+                .filter((a) => a.assignment_type === "project")
+                .map((assignment, idx) => (
+                  <Badge key={idx} variant="secondary" className="gap-1 pr-1">
+                    {assignment.user_name}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 ml-1 hover:bg-transparent"
+                      onClick={() =>
+                        removeAssignment(
+                          assignments.findIndex(
+                            (a) =>
+                              a.user_id === assignment.user_id &&
+                              a.assignment_type === "project"
+                          )
+                        )
+                      }
                     >
-                      {a.user_name}
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({a.assignment_type === "project"
-                          ? "Tüm Proje"
-                          : areas[a.areaIndex]?.name || "Alan"})
-                      </span>
-                      <button
-                        type="button"
-                        className="ml-1 hover:text-destructive"
-                        onClick={() => removeAssignment(idx)}
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
+            </div>
+            <Select
+              value=""
+              onValueChange={(userId) => addAssignment(userId, "project")}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Personel ekle..." />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/projects")}
-          >
-            İptal
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Oluşturuluyor...
-              </>
-            ) : (
-              "Proje Oluştur"
-            )}
-          </Button>
-        </div>
+        {/* Summary */}
+        <Card className="bg-muted/30">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Toplam Anlaşma Bedeli</p>
+                <p className="text-2xl font-bold text-primary">
+                  {formatCurrency(totalAgreed)}
+                </p>
+              </div>
+              <Button type="submit" size="lg" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Oluşturuluyor...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Proje Oluştur
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </form>
+
+      {/* New Customer Dialog */}
+      <Dialog open={newCustomerDialogOpen} onOpenChange={setNewCustomerDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Hızlı Müşteri Ekleme</DialogTitle>
+            <DialogDescription>
+              Yeni müşteri bilgilerini girin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-type">Müşteri Tipi</Label>
+              <Select
+                value={newCustomerForm.type}
+                onValueChange={(v) => setNewCustomerForm(prev => ({ ...prev, type: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Tip seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customerTypes.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      <div className="flex items-center gap-2">
+                        <t.icon className="h-4 w-4" />
+                        {t.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-name">İsim / Firma Adı *</Label>
+              <Input
+                id="new-customer-name"
+                value={newCustomerForm.name}
+                onChange={(e) => setNewCustomerForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Ahmet Yılmaz"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-phone">Telefon *</Label>
+              <Input
+                id="new-customer-phone"
+                value={newCustomerForm.phone}
+                onChange={(e) => setNewCustomerForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="0 (5xx) xxx xx xx"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-customer-email">E-posta</Label>
+              <Input
+                id="new-customer-email"
+                type="email"
+                value={newCustomerForm.email}
+                onChange={(e) => setNewCustomerForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="ornek@email.com"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewCustomerDialogOpen(false)}>
+              İptal
+            </Button>
+            <Button onClick={handleCreateNewCustomer} disabled={savingCustomer}>
+              {savingCustomer && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Oluştur ve Seç
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
