@@ -299,6 +299,7 @@ export default function ProjectDetailPage() {
         fetchTasks(),
         fetchUsers(),
         fetchFiles(),
+        fetchLockStatus(),
       ]);
     } finally {
       setLoading(false);
@@ -314,6 +315,13 @@ export default function ProjectDetailPage() {
       setPaymentForm((p) => ({ ...p, area_id: p.area_id || firstAreaId || "" }));
       setAssignForm((a) => ({ ...a, area_id: a.area_id || firstAreaId || "" }));
     } catch { toast.error("Proje yüklenirken hata oluştu"); }
+  };
+
+  const fetchLockStatus = async () => {
+    try {
+      const r = await axios.get(`${API_URL}/projects/${projectId}/lock-status`);
+      setProjectLockStatus(r.data);
+    } catch { setProjectLockStatus({ locked: false, reason: null, can_modify: true }); }
   };
 
   const fetchActivities = async () => { try { const r = await axios.get(`${API_URL}/projects/${projectId}/activities`); setActivities(r.data || []); } catch { setActivities([]); } };
