@@ -490,20 +490,48 @@ def create_token(user_id: str, tenant_id: str) -> str:
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        # Kullanıcıyı bul
         user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="Kullanıcı bulunamadı")
+        
+        # --- EKLENEN KISIM BAŞLANGIÇ ---
+        # Eğer kullanıcının bir rolü varsa, o rolün yetkilerini çek ve user objesine ekle
+        user_permissions = []
+        if user.get("role_id"):
+            role = await db.roles.find_one(
+                {"id": user["role_id"], "tenant_id": user["tenant_id"]}, 
+                {"permissions": 1, "_id": 0}
+            )
+            if role and "permissions" in role:
+                user_permissions = role["permissions"]
+        
+        # Yetkileri user objesine gömüyoruz (RAM'de taşınacak)
+        user["permissions_list"] = user_permissions
+        # --- EKLENEN KISIM BİTİŞ ---
+
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token süresi dolmuş")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Geçersiz token")
 
-def check_permission(user: dict, permission: str):
-    """Check if user has the required permission"""
-    if user.get("is_admin"):
+# DİKKAT: Bu fonksiyon en sola dayalı olmalı (get_current_user ile aynı hizada)
+def check_permission(user: dict, permission_key: str):
+    # 1. Tenant Admin ise her şeye yetkisi var
+    if user.get("is_admin", False) is True:
         return True
-    # TODO: Check role permissions
+    
+    # 2. Kullanıcının yetki listesini al
+    user_perms = user.get("permissions_list", [])
+    
+    # 3. İstenen yetki listede var mı?
+    if permission_key not in user_perms:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Bu işlem için yetkiniz bulunmamaktadır. Gereken yetki: {permission_key}"
+        )
+    
     return True
 
 # ==================== WEBSOCKET MANAGER ====================
