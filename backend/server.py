@@ -1441,6 +1441,7 @@ async def create_project(data: ProjectCreate, user: dict = Depends(get_current_u
         "tenant_id": user["tenant_id"],
         "name": data.name,
         "description": data.description,
+        "customer_id": data.customer_id,
         "customer_name": data.customer_name,
         "customer_phone": data.customer_phone,
         "customer_email": data.customer_email,
