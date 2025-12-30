@@ -564,6 +564,53 @@ export default function ProjectDetailPage() {
     saveAs(new Blob([out], { type: "application/octet-stream" }), `tahsilatlar_${project?.name || "proje"}.xlsx`);
   };
 
+  // Project Status Actions (Stop, Complete, Resume)
+  const handleStopProject = async () => {
+    setStatusChanging(true);
+    try {
+      await axios.put(`${API_URL}/projects/${projectId}`, { status: "durduruldu" });
+      await fetchProject();
+      await fetchLockStatus();
+      toast.success("Proje durduruldu");
+      setShowStopDialog(false);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "İşlem başarısız");
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
+  const handleCompleteProject = async () => {
+    setStatusChanging(true);
+    try {
+      await axios.put(`${API_URL}/projects/${projectId}`, { status: "tamamlandi" });
+      await fetchProject();
+      await fetchLockStatus();
+      toast.success("Proje tamamlandı");
+      setShowCompleteDialog(false);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "İşlem başarısız");
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
+  const handleResumeProject = async () => {
+    setStatusChanging(true);
+    try {
+      // Resume to previous active status (uretimde)
+      await axios.put(`${API_URL}/projects/${projectId}`, { status: "uretimde" });
+      await fetchProject();
+      await fetchLockStatus();
+      toast.success("Proje devam ettiriliyor");
+      setShowResumeDialog(false);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "İşlem başarısız");
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(12);
