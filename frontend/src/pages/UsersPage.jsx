@@ -72,7 +72,7 @@ const colorOptions = [
 ];
 
 export default function UsersPage() {
-  const { user: currentUser, updateUser } = useAuth();
+  const { user: currentUser, updateUser, hasPermission } = useAuth();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
