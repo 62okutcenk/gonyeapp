@@ -281,7 +281,7 @@ export default function SetupRolesPage() {
                 <Card>
                   <ScrollArea className="h-80">
                     <div className="p-4 space-y-6">
-                      {Object.entries(groupedPermissions).map(([category, perms]) => (
+                      {Object.entries(sortedGroupedPermissions).map(([category, perms]) => (
                         <div key={category}>
                           <h4 className="font-medium text-sm mb-3">{category}</h4>
                           <div className="grid gap-3 sm:grid-cols-2">
