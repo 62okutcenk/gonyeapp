@@ -704,6 +704,8 @@ DEFAULT_PERMISSIONS = [
     {"key": "projects.manage_finance", "name": "Finans Yönet", "description": "Proje finansı ve tahsilat yönetimi yetkisi"},
     {"key": "tasks.view", "name": "Görevleri Görüntüle", "description": "Görevleri görüntüleme yetkisi"},
     {"key": "tasks.edit", "name": "Görev Düzenle", "description": "Görev durumu güncelleme yetkisi"},
+    {"key": "customers.view", "name": "Müşterileri Görüntüle", "description": "Müşteri listesi görüntüleme yetkisi"},
+    {"key": "customers.manage", "name": "Müşterileri Yönet", "description": "Müşteri ekleme/düzenleme/silme yetkisi"},
     {"key": "setup.groups", "name": "Grupları Yönet", "description": "Grup oluşturma ve düzenleme yetkisi"},
     {"key": "setup.subtasks", "name": "Alt Görevleri Yönet", "description": "Alt görev yönetimi yetkisi"},
     {"key": "setup.workitems", "name": "İş Kalemlerini Yönet", "description": "İş kalemi yönetimi yetkisi"},
