@@ -1025,6 +1025,10 @@ async def get_customers(
     user: dict = Depends(get_current_user)
 ):
     """Get all customers for the tenant with optional search and type filter"""
+    # Check permission - need either customers.view or customers.manage
+    if not user.get("is_admin") and "customers.view" not in user.get("permissions_list", []) and "customers.manage" not in user.get("permissions_list", []):
+        raise HTTPException(status_code=403, detail="Müşterileri görüntüleme yetkiniz bulunmamaktadır")
+    
     query = {"tenant_id": user["tenant_id"]}
     
     if search:
