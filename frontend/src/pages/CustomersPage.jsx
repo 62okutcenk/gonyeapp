@@ -356,6 +356,7 @@ export default function CustomersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* Stats Cards */}
