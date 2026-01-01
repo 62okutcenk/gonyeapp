@@ -219,7 +219,7 @@ const NavItem = ({ item, onClick, collapsed }) => {
   );
 };
 
-const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user, pendingTasks, hasPermission }) => {
+const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user, pendingTasks, hasPermission, chatUnreadCount }) => {
   
   const logoUrl = isDark && tenant?.dark_logo_url 
     ? tenant.dark_logo_url 
