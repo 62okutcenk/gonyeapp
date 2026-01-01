@@ -592,6 +592,7 @@ export default function DashboardLayout() {
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           user={user}
           pendingTasks={pendingTaskCount}
+          hasPermission={hasPermission}
         />
       </aside>
 
@@ -617,6 +618,7 @@ export default function DashboardLayout() {
               collapsed={false}
               user={user}
               pendingTasks={pendingTaskCount}
+              hasPermission={hasPermission}
             />
           </SheetContent>
         </Sheet>
