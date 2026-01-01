@@ -803,6 +803,15 @@ const ChatPage = () => {
         newGroupDescription.trim() || null
       );
       if (conv) {
+        // Upload avatar if selected
+        if (newGroupAvatarFile) {
+          const uploaded = await uploadFile(conv.id, newGroupAvatarFile);
+          if (uploaded) {
+            await updateConversation(conv.id, {
+              avatar_url: `/api/files/${uploaded.id}`
+            });
+          }
+        }
         selectConversation(conv);
         resetNewChat();
       }
