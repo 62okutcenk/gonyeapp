@@ -637,6 +637,13 @@ const ChatPage = () => {
   const [editingConversation, setEditingConversation] = useState(false);
   const [tempConvName, setTempConvName] = useState("");
   const [tempConvDescription, setTempConvDescription] = useState("");
+  // @mention states
+  const [showMentionPicker, setShowMentionPicker] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionResults, setMentionResults] = useState([]);
+  const [mentionLoading, setMentionLoading] = useState(false);
+  const [selectedMentions, setSelectedMentions] = useState([]);
+  const [cursorPosition, setCursorPosition] = useState(0);
 
   // Refs
   const messagesEndRef = useRef(null);
