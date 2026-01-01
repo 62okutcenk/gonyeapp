@@ -776,12 +776,14 @@ export default function ProjectsPage() {
             PDF
           </Button>
 
-          <Button asChild>
-            <Link to="/projects/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Proje
-            </Link>
-          </Button>
+          {hasPermission("projects.create") && (
+            <Button asChild>
+              <Link to="/projects/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Yeni Proje
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
