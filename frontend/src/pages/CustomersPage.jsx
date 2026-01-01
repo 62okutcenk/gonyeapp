@@ -219,35 +219,36 @@ export default function CustomersPage() {
             Müşteri portföyünüzü yönetin ve takip edin
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Yeni Müşteri
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>
-                {editingCustomer ? "Müşteri Düzenle" : "Yeni Müşteri"}
-              </DialogTitle>
-              <DialogDescription>
-                Müşteri bilgilerini girin
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Müşteri Tipi</Label>
-                  <Select
-                    value={form.type}
-                    onValueChange={(v) => setForm({ ...form, type: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tip seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customerTypes.map((t) => (
+        {hasPermission("customers.manage") && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenDialog()}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Yeni Müşteri
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCustomer ? "Müşteri Düzenle" : "Yeni Müşteri"}
+                </DialogTitle>
+                <DialogDescription>
+                  Müşteri bilgilerini girin
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Müşteri Tipi</Label>
+                    <Select
+                      value={form.type}
+                      onValueChange={(v) => setForm({ ...form, type: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tip seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customerTypes.map((t) => (
                         <SelectItem key={t.value} value={t.value}>
                           <div className="flex items-center gap-2">
                             <t.icon className="h-4 w-4" />
