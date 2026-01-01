@@ -81,6 +81,7 @@ import {
   Building2,
   ClipboardList,
   Camera,
+  AtSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
