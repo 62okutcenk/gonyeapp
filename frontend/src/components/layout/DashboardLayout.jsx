@@ -75,36 +75,68 @@ import { cn } from "@/lib/utils";
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Nav groups will be dynamically generated based on user role
-const getNavGroups = (isAdmin) => {
-  const groups = [
-    {
-      title: "GENEL",
-      items: [
-        { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
-        { name: "Projeler", href: "/projects", icon: FolderKanban },
-        { name: "Müşteriler", href: "/customers", icon: UserCircle },
-      ]
-    },
-    {
+// Nav groups will be dynamically generated based on user permissions
+const getNavGroups = (user, hasPermission) => {
+  const groups = [];
+  
+  // GENEL - Always visible
+  const generalItems = [
+    { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
+  ];
+  
+  // Projeler - visible if user has projects.view or projects.view_all
+  if (hasPermission("projects.view") || hasPermission("projects.view_all")) {
+    generalItems.push({ name: "Projeler", href: "/projects", icon: FolderKanban });
+  }
+  
+  // Müşteriler - visible if user has customers.view or customers.manage
+  if (hasPermission("customers.view") || hasPermission("customers.manage")) {
+    generalItems.push({ name: "Müşteriler", href: "/customers", icon: UserCircle });
+  }
+  
+  groups.push({
+    title: "GENEL",
+    items: generalItems
+  });
+  
+  // YÖNETİM - Only if has users.view permission
+  if (hasPermission("users.view") || hasPermission("users.manage")) {
+    groups.push({
       title: "YÖNETİM",
       items: [
         { name: "Kullanıcılar", href: "/users", icon: Users },
       ]
-    },
-    {
+    });
+  }
+  
+  // SİSTEM AYARLARI - Only items user has permission for
+  const setupItems = [];
+  
+  if (hasPermission("setup.groups") || hasPermission("setup.subtasks")) {
+    setupItems.push({ name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers });
+  }
+  
+  if (hasPermission("setup.workitems")) {
+    setupItems.push({ name: "İş Kalemleri", href: "/setup/workitems", icon: Package });
+  }
+  
+  if (hasPermission("setup.roles")) {
+    setupItems.push({ name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield });
+  }
+  
+  if (hasPermission("settings.manage")) {
+    setupItems.push({ name: "Firma Ayarları", href: "/setup/settings", icon: Building2 });
+  }
+  
+  if (setupItems.length > 0) {
+    groups.push({
       title: "SİSTEM AYARLARI",
-      items: [
-        { name: "Gruplar & Alt Görevler", href: "/setup/groups", icon: Layers },
-        { name: "İş Kalemleri", href: "/setup/workitems", icon: Package },
-        { name: "Roller & Yetkiler", href: "/setup/roles", icon: Shield },
-        { name: "Firma Ayarları", href: "/setup/settings", icon: Building2 },
-      ]
-    }
-  ];
+      items: setupItems
+    });
+  }
 
-  // Add subscription menu only for admin
-  if (isAdmin) {
+  // ABONELİK - only for admin
+  if (user?.is_admin) {
     groups.push({
       title: "ABONELİK",
       items: [
