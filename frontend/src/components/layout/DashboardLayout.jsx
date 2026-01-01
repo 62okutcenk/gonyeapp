@@ -296,7 +296,7 @@ const Sidebar = ({ onNavClick, tenant, isDark, collapsed, onToggleCollapse, user
 
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
-          {getNavGroups(user, hasPermission).map((group, index) => (
+          {getNavGroups(user, hasPermission, chatUnreadCount).map((group, index) => (
             <div key={index} className="mb-4 last:mb-0">
               {!collapsed && (
                 <h4 className="text-[11px] uppercase font-bold text-muted-foreground/70 tracking-wider mb-2 px-3 mt-2">
