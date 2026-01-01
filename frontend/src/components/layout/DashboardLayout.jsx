@@ -465,6 +465,7 @@ export default function DashboardLayout() {
   const { user, logout, hasPermission } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead, hasNewNotification, clearNewNotificationFlag } = useNotifications();
   const { theme, toggleTheme, isDark } = useTheme();
+  const { totalUnreadCount: chatUnreadCount } = useChat();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tenant, setTenant] = useState(null);
