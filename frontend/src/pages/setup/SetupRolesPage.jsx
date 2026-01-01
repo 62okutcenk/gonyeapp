@@ -125,18 +125,20 @@ export default function SetupRolesPage() {
     }
   };
 
-  // Group permissions by category
+  // Group permissions by category with predefined order
+  const categoryOrder = ["Projeler", "Müşteriler", "Görevler", "Kullanıcılar", "Kurulum", "Ayarlar", "Dosyalar"];
+  const categoryLabels = {
+    projects: "Projeler",
+    tasks: "Görevler",
+    customers: "Müşteriler",
+    setup: "Kurulum",
+    users: "Kullanıcılar",
+    settings: "Ayarlar",
+    files: "Dosyalar",
+  };
+
   const groupedPermissions = permissions.reduce((acc, perm) => {
     const category = perm.key.split(".")[0];
-    const categoryLabels = {
-      projects: "Projeler",
-      tasks: "Görevler",
-      customers: "Müşteriler",
-      setup: "Kurulum",
-      users: "Kullanıcılar",
-      settings: "Ayarlar",
-      files: "Dosyalar",
-    };
     const label = categoryLabels[category] || category;
     if (!acc[label]) {
       acc[label] = [];
@@ -144,6 +146,13 @@ export default function SetupRolesPage() {
     acc[label].push(perm);
     return acc;
   }, {});
+
+  // Sort categories by predefined order
+  const sortedGroupedPermissions = Object.fromEntries(
+    categoryOrder
+      .filter(cat => groupedPermissions[cat])
+      .map(cat => [cat, groupedPermissions[cat]])
+  );
 
   return (
     <div className="space-y-6 animate-slide-in" data-testid="setup-roles-page">
