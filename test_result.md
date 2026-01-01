@@ -299,6 +299,30 @@ frontend:
         agent: "main"
         comment: "WebSocket connection with auto-reconnect, toast notifications, sound, bell animation"
 
+  - task: "Chat System API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/routes/chat.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "New chat system with conversations, messages, reactions, mentions, file sharing"
+
+  - task: "Backend Modularization"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Refactored 3233 line server.py into modular structure: routes/, models/, services/, middleware/, utils/"
+
   - task: "Notification bell animation"
     implemented: true
     working: "NA"
