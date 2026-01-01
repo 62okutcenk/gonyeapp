@@ -1117,20 +1117,67 @@ const ChatPage = () => {
                   </PopoverContent>
                 </Popover>
 
-                {/* Message input */}
+                {/* Message input with @mention picker */}
                 <div className="flex-1 relative">
-                  <Textarea
-                    placeholder="Mesaj yazın..."
+                  {/* @mention picker */}
+                  {showMentionPicker && (
+                    <div className="absolute bottom-full left-0 mb-2 w-64 bg-card border rounded-lg shadow-lg z-50 overflow-hidden">
+                      <div className="p-2 border-b bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <AtSign className="h-3 w-3" />
+                          Birini etiketle
+                        </p>
+                      </div>
+                      <ScrollArea className="max-h-48">
+                        {mentionLoading ? (
+                          <div className="flex justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        ) : mentionResults.length > 0 ? (
+                          <div className="p-1">
+                            {mentionResults.map(u => (
+                              <button
+                                key={u.id}
+                                onClick={() => insertMention(u)}
+                                className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-muted text-left"
+                              >
+                                <Avatar className="h-7 w-7">
+                                  {u.avatar_url && <AvatarImage src={BACKEND_URL + u.avatar_url} />}
+                                  <AvatarFallback className="text-xs">{getInitials(u.full_name)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm font-medium">{u.full_name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : mentionQuery ? (
+                          <p className="text-center py-4 text-xs text-muted-foreground">
+                            Kullanıcı bulunamadı
+                          </p>
+                        ) : (
+                          <p className="text-center py-4 text-xs text-muted-foreground">
+                            @ yazarak başlayın
+                          </p>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  )}
+                  
+                  <Input
+                    ref={inputRef}
+                    placeholder="Mesaj yazın... (@ile etiketleyin)"
                     value={messageInput}
                     onChange={handleInputChange}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
+                      if (showMentionPicker && e.key === "Escape") {
+                        setShowMentionPicker(false);
+                        return;
+                      }
+                      if (e.key === "Enter" && !e.shiftKey && !showMentionPicker) {
                         e.preventDefault();
                         handleSend();
                       }
                     }}
-                    className="min-h-[44px] max-h-[120px] resize-none pr-10 rounded-2xl"
-                    rows={1}
+                    className="rounded-2xl pr-4"
                   />
                 </div>
 
