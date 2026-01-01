@@ -105,9 +105,17 @@
 user_problem_statement: |
   Kullanıcı, marangozlar ve yapı tasarım ürünleri üretenler için çok kiracılı (multi-tenant) bir SaaS projesi oluşturulmasını istedi.
   Son istekler:
-  - Kurulum sihirbazında hızlı iş kalemi ekleme hatası düzeltilsin
-  - Sidebar'da logo görünmesi ve firma adı baş harfleri (avatar) iyileştirmesi
-  - Bildirimler drawer yerine dropdown menü olarak açılsın
+  - Backend modülerleştirme (3200+ satırlık server.py profesyonel yapıya getirildi)
+  - Chat sistemi eklendi:
+    - @mention ile etiketleme
+    - Emoji tepkileri (👍 ❤️ 😊 🎉 😮 😢 😂 🔥)
+    - Alıntı ile cevap verme
+    - Grup sohbetleri (proje bazlı, genel, özel)
+    - Bireysel (DM) sohbetler
+    - Dosya/resim paylaşımı
+    - Link paylaşımı (proje, müşteri, görev)
+    - 5 dakika içinde mesaj silme/düzenleme
+    - Real-time bildirimlerle entegrasyon
 
 backend:
   - task: "Multi-tenant auth (register/login)"
