@@ -423,6 +423,9 @@ export default function DashboardLayout() {
   const [searchResults, setSearchResults] = useState({ projects: [], customers: [] });
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef(null);
+  
+  // Connection status for debugging
+  const [connectionStatus] = useState('connected');
 
   const fetchData = async () => {
     try {
