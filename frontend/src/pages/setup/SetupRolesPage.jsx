@@ -279,7 +279,7 @@ export default function SetupRolesPage() {
               <div className="space-y-2">
                 <Label>Yetkiler</Label>
                 <Card>
-                  <ScrollArea className="h-80">
+                  <ScrollArea className="h-96">
                     <div className="p-4 space-y-6">
                       {Object.entries(sortedGroupedPermissions).map(([category, perms]) => (
                         <div key={category}>
