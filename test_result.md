@@ -343,9 +343,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Backend Modularization"
-    - "Chat System API"
-    - "Multi-tenant auth"
+    - "Customer CRM API endpoints"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
