@@ -427,7 +427,7 @@ export default function DashboardLayout() {
   // Connection status for debugging
   const [connectionStatus] = useState('connected');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const requests = [
         axios.get(`${API_URL}/tenant`),
@@ -450,7 +450,7 @@ export default function DashboardLayout() {
     } catch (error) {
       console.error("Layout data fetch error:", error);
     }
-  };
+  }, [user?.is_admin]);
 
   useEffect(() => {
     if (user) {
