@@ -171,7 +171,7 @@ const NavItem = ({ item, onClick, collapsed }) => {
               onClick={onClick}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "relative flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -179,10 +179,16 @@ const NavItem = ({ item, onClick, collapsed }) => {
               }
             >
               <item.icon className="h-5 w-5 shrink-0" />
+              {item.badge && (
+                <span className="absolute -top-1 -right-1 h-5 min-w-[20px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              )}
             </NavLink>
           </TooltipTrigger>
           <TooltipContent side="right" className="font-medium">
             {item.name}
+            {item.badge && ` (${item.badge})`}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -203,7 +209,12 @@ const NavItem = ({ item, onClick, collapsed }) => {
       }
     >
       <item.icon className="h-5 w-5 shrink-0" />
-      <span>{item.name}</span>
+      <span className="flex-1">{item.name}</span>
+      {item.badge && (
+        <Badge variant="destructive" className="h-5 min-w-[20px] flex items-center justify-center text-[10px] font-bold">
+          {item.badge > 99 ? "99+" : item.badge}
+        </Badge>
+      )}
     </NavLink>
   );
 };
