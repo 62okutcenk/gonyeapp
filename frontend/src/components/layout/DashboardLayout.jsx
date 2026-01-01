@@ -78,7 +78,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Nav groups will be dynamically generated based on user permissions
-const getNavGroups = (user, hasPermission) => {
+const getNavGroups = (user, hasPermission, chatUnreadCount = 0) => {
   const groups = [];
   
   // GENEL - Always visible
@@ -98,7 +98,12 @@ const getNavGroups = (user, hasPermission) => {
   
   // Sohbet - Always visible for chat.access permission
   if (hasPermission("chat.access") || user?.is_admin) {
-    generalItems.push({ name: "Sohbet", href: "/chat", icon: MessageSquare });
+    generalItems.push({ 
+      name: "Sohbet", 
+      href: "/chat", 
+      icon: MessageSquare,
+      badge: chatUnreadCount > 0 ? chatUnreadCount : null
+    });
   }
   
   groups.push({
