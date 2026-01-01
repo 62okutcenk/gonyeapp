@@ -816,6 +816,8 @@ const ChatPage = () => {
     setNewGroupName("");
     setNewGroupDescription("");
     setUserSearchQuery("");
+    setNewGroupAvatarFile(null);
+    setNewGroupAvatarPreview(null);
   };
 
   const handleUpdateConversation = async () => {
