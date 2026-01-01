@@ -272,6 +272,67 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [isAuthenticated, fetchNotifications, fetchUnreadCount]);
 
+  // Chat message handlers - will be set by ChatContext
+  const chatHandlersRef = useRef(null);
+
+  const setChatMessageHandler = useCallback((handler) => {
+    chatHandlersRef.current = handler;
+  }, []);
+
+  // Updated WebSocket message handler with chat support
+  const handleWebSocketMessageWithChat = useCallback((event) => {
+    try {
+      if (event.data === "pong") return;
+      const data = JSON.parse(event.data);
+      
+      // Handle notification
+      if (data.type === "notification") {
+        const notification = data.data;
+        setNotifications((prev) => [notification, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+        setHasNewNotification(true);
+        setTimeout(() => setHasNewNotification(false), 3000);
+        
+        if (audioRef.current && NOTIFICATION_SOUND_ENABLED) {
+            audioRef.current.play();
+        }
+        
+        const icon = getToastIcon(notification.type);
+        const toastOptions = getToastStyle(notification.type);
+        toast(
+          <div className="flex items-start gap-2">
+            <span className="text-lg">{icon}</span>
+            <div>
+              <p className="font-semibold">{notification.title}</p>
+              <p className="text-sm opacity-90">{notification.message}</p>
+            </div>
+          </div>,
+          {
+            duration: 5000,
+            ...toastOptions,
+            action: notification.link ? { label: "Görüntüle", onClick: () => window.location.href = notification.link } : undefined
+          }
+        );
+      }
+      
+      // Handle chat messages - forward to ChatContext
+      if (chatHandlersRef.current && [
+        "new_message", "message_edited", "message_deleted",
+        "reaction_added", "reaction_removed", "typing",
+        "participant_added", "participant_removed"
+      ].includes(data.type)) {
+        chatHandlersRef.current(data);
+      }
+    } catch (error) {}
+  }, []);
+
+  // Update the WebSocket onmessage handler
+  useEffect(() => {
+    if (wsRef.current) {
+      wsRef.current.onmessage = handleWebSocketMessageWithChat;
+    }
+  }, [handleWebSocketMessageWithChat]);
+
   const value = {
     notifications,
     unreadCount,
@@ -281,6 +342,7 @@ export const NotificationProvider = ({ children }) => {
     markAsRead,
     markAllAsRead,
     clearNewNotificationFlag,
+    setChatMessageHandler,
   };
 
   return (
