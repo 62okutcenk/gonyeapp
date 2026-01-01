@@ -408,7 +408,7 @@ const CurrentTime = () => {
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, hasNewNotification, connectionStatus } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, hasNewNotification, clearNewNotificationFlag } = useNotifications();
   const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -416,6 +416,13 @@ export default function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
   const [subscription, setSubscription] = useState(null);
+  
+  // Global Search State
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState({ projects: [], customers: [] });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimeoutRef = useRef(null);
 
   const fetchData = async () => {
     try {
@@ -448,6 +455,54 @@ export default function DashboardLayout() {
     }
   }, [user?.is_admin]);
 
+  // Global Search Handler
+  const handleSearch = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setSearchResults({ projects: [], customers: [] });
+      return;
+    }
+    
+    setSearchLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/search/global?q=${encodeURIComponent(query)}`);
+      setSearchResults(response.data);
+    } catch (error) {
+      console.error("Search error:", error);
+      setSearchResults({ projects: [], customers: [] });
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      handleSearch(searchQuery);
+    }, 300);
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, handleSearch]);
+
+  const handleSearchSelect = (type, id) => {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults({ projects: [], customers: [] });
+    
+    if (type === "project") {
+      navigate(`/projects/${id}`);
+    } else if (type === "customer") {
+      navigate(`/customers/${id}`);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -465,6 +520,15 @@ export default function DashboardLayout() {
   const getAvatarUrl = () => {
     if (!user?.avatar_url) return null;
     return user.avatar_url.startsWith("http") ? user.avatar_url : BACKEND_URL + user.avatar_url;
+  };
+
+  const statusLabels = {
+    planlandi: "Planlandı",
+    uretimde: "Üretimde",
+    montaj: "Montaj",
+    kontrol: "Kontrol",
+    tamamlandi: "Tamamlandı",
+    durduruldu: "Durduruldu",
   };
 
   return (
