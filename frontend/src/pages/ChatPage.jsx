@@ -649,11 +649,28 @@ const ChatPage = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Search for @mention
+  useEffect(() => {
+    const search = async () => {
+      if (!showMentionPicker || mentionQuery.length < 1) {
+        setMentionResults([]);
+        return;
+      }
+      setMentionLoading(true);
+      const results = await searchUsers(mentionQuery);
+      setMentionResults(results.filter(u => u.id !== user?.id));
+      setMentionLoading(false);
+    };
+    const timeout = setTimeout(search, 200);
+    return () => clearTimeout(timeout);
+  }, [mentionQuery, showMentionPicker, searchUsers, user]);
 
   // Search users
   useEffect(() => {
