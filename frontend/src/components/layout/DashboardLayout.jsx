@@ -69,6 +69,7 @@ import {
   User,
   Loader2,
   X,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -92,6 +93,11 @@ const getNavGroups = (user, hasPermission) => {
   // Müşteriler - visible if user has customers.view or customers.manage
   if (hasPermission("customers.view") || hasPermission("customers.manage")) {
     generalItems.push({ name: "Müşteriler", href: "/customers", icon: UserCircle });
+  }
+  
+  // Sohbet - Always visible for chat.access permission
+  if (hasPermission("chat.access") || user?.is_admin) {
+    generalItems.push({ name: "Sohbet", href: "/chat", icon: MessageSquare });
   }
   
   groups.push({
