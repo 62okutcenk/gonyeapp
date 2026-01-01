@@ -857,6 +857,16 @@ async def login(data: UserLogin):
     tenant_doc = await db.tenants.find_one({"id": user["tenant_id"]}, {"setup_completed": 1, "_id": 0})
     setup_completed = tenant_doc.get("setup_completed", False) if tenant_doc else False
     
+    # Get user's permissions from their role
+    user_permissions = []
+    if user.get("role_id"):
+        role = await db.roles.find_one(
+            {"id": user["role_id"]},
+            {"permissions": 1, "_id": 0}
+        )
+        if role and "permissions" in role:
+            user_permissions = role["permissions"]
+    
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -869,6 +879,7 @@ async def login(data: UserLogin):
             avatar_url=user.get("avatar_url"),
             is_admin=user.get("is_admin", False),
             setup_completed=setup_completed,
+            permissions_list=user_permissions,
             created_at=user["created_at"]
         )
     )
