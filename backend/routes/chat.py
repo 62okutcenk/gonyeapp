@@ -678,6 +678,36 @@ async def delete_message(message_id: str, user: dict = Depends(get_current_user)
     
     return {"message": "Mesaj silindi"}
 
+# ==================== PIN MESSAGE ====================
+
+class PinMessageUpdate(BaseModel):
+    is_pinned: bool
+
+@router.put("/messages/{message_id}/pin")
+async def pin_message(message_id: str, data: PinMessageUpdate, user: dict = Depends(get_current_user)):
+    """Pin or unpin a message"""
+    message = await db.messages.find_one({"id": message_id, "tenant_id": user["tenant_id"]}, {"_id": 0})
+    if not message:
+        raise HTTPException(status_code=404, detail="Mesaj bulunamadı")
+    
+    if message.get("is_deleted"):
+        raise HTTPException(status_code=400, detail="Silinmiş mesaj sabitlenemez")
+    
+    await db.messages.update_one(
+        {"id": message_id},
+        {"$set": {"is_pinned": data.is_pinned}}
+    )
+    
+    # Broadcast pin update
+    await manager.broadcast_to_conversation(message["conversation_id"], {
+        "type": "message_pinned" if data.is_pinned else "message_unpinned",
+        "conversation_id": message["conversation_id"],
+        "message_id": message_id,
+        "is_pinned": data.is_pinned
+    })
+    
+    return {"message": "Mesaj sabitlendi" if data.is_pinned else "Sabitleme kaldırıldı"}
+
 # ==================== REACTIONS ====================
 
 @router.post("/messages/{message_id}/reactions")
