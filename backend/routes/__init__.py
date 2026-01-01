@@ -1,0 +1,9 @@
+from routes.auth import router as auth_router
+from routes.tenant import router as tenant_router
+from routes.customers import router as customers_router
+from routes.setup import router as setup_router
+from routes.users import router as users_router
+from routes.projects import router as projects_router
+from routes.files import router as files_router
+from routes.dashboard import router as dashboard_router
+from routes.chat import router as chat_router
