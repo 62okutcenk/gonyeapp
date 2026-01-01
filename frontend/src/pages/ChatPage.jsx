@@ -764,10 +764,14 @@ const ChatPage = () => {
       await editMessage(editingMessage.id, messageInput);
       setEditingMessage(null);
     } else {
+      // Extract mention IDs from selected mentions
+      const mentionIds = selectedMentions.map(m => m.id);
       await sendMessage(activeConversation.id, messageInput, {
-        replyToId: replyTo?.id
+        replyToId: replyTo?.id,
+        mentions: mentionIds
       });
       setReplyTo(null);
+      setSelectedMentions([]);
     }
     setMessageInput("");
   };
