@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,9 +20,9 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetHeader,      // EKLENDİ
-  SheetTitle,       // EKLENDİ
-  SheetDescription, // EKLENDİ
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   Popover,
@@ -35,6 +36,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -56,6 +65,10 @@ import {
   Briefcase,
   Crown,
   UserCircle,
+  Search,
+  User,
+  Loader2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
