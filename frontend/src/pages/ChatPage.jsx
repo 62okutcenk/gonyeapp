@@ -930,15 +930,41 @@ const ChatPage = () => {
               </Button>
             </div>
 
-            {/* Pinned Messages Bar */}
+            {/* Pinned Messages Bar - Clickable with content */}
             {pinnedMessages.length > 0 && (
-              <div className="px-6 py-2 bg-amber-50/50 dark:bg-amber-950/10 border-b flex items-center gap-2 shrink-0 backdrop-blur-sm">
-                <Pin className="h-3.5 w-3.5 text-amber-500 fill-current" />
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                  {pinnedMessages.length} sabitlenmiş mesaj
-                </span>
-                <ChevronRight className="h-3.5 w-3.5 text-amber-500/50 ml-auto" />
-              </div>
+              <button
+                onClick={() => {
+                  // Scroll to first pinned message
+                  const pinnedMsg = pinnedMessages[0];
+                  const msgElement = document.getElementById(`msg-${pinnedMsg.id}`);
+                  if (msgElement) {
+                    msgElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                    msgElement.classList.add("ring-2", "ring-amber-400", "ring-offset-2");
+                    setTimeout(() => {
+                      msgElement.classList.remove("ring-2", "ring-amber-400", "ring-offset-2");
+                    }, 2000);
+                  }
+                }}
+                className="w-full px-6 py-2.5 bg-gradient-to-r from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-b flex items-center gap-3 shrink-0 hover:from-amber-100 hover:to-amber-50 dark:hover:from-amber-950/30 dark:hover:to-amber-900/20 transition-colors cursor-pointer group"
+              >
+                <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                  <Pin className="h-4 w-4 text-amber-500 fill-current" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                    Sabitlenmiş Mesaj
+                  </p>
+                  <p className="text-xs text-amber-600/70 dark:text-amber-500/70 truncate">
+                    {pinnedMessages[0]?.content || "Mesaj içeriği"}
+                  </p>
+                </div>
+                {pinnedMessages.length > 1 && (
+                  <Badge variant="secondary" className="bg-amber-200/50 text-amber-700 dark:bg-amber-800/30 dark:text-amber-400 text-[10px]">
+                    +{pinnedMessages.length - 1}
+                  </Badge>
+                )}
+                <ChevronRight className="h-4 w-4 text-amber-500/50 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             )}
 
             {/* Messages Area - SCROLLABLE CONTAINER */}
