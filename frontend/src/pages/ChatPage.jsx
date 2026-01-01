@@ -1242,15 +1242,48 @@ const ChatPage = () => {
           {activeConversation && (
             <div className="mt-6 space-y-6">
               <div className="flex flex-col items-center">
-                <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                  {activeConversation.avatar_url && (
-                    <AvatarImage src={BACKEND_URL + activeConversation.avatar_url} />
+                {/* Avatar with upload option for groups */}
+                <div className="relative group">
+                  <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
+                    {activeConversation.avatar_url && (
+                      <AvatarImage src={BACKEND_URL + activeConversation.avatar_url} />
+                    )}
+                    <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-primary/50 text-primary-foreground">
+                      {activeConversation.type === "general" ? "#" : 
+                       getInitials(activeConversation.name || activeConversation.project_name || otherParticipant?.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Avatar upload button for groups */}
+                  {activeConversation.type === "group" && (
+                    <>
+                      <input
+                        type="file"
+                        id="group-avatar-input"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          // Upload file first
+                          const uploaded = await uploadFile(activeConversation.id, file);
+                          if (uploaded) {
+                            // Then update conversation with avatar URL
+                            await updateConversation(activeConversation.id, {
+                              avatar_url: `/api/files/${uploaded.id}`
+                            });
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                      <label
+                        htmlFor="group-avatar-input"
+                        className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <Camera className="h-6 w-6 text-white" />
+                      </label>
+                    </>
                   )}
-                  <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-primary/50 text-primary-foreground">
-                    {activeConversation.type === "general" ? "#" : 
-                     getInitials(activeConversation.name || activeConversation.project_name || otherParticipant?.name)}
-                  </AvatarFallback>
-                </Avatar>
+                </div>
                 
                 {editingConversation && (activeConversation.type === "group" || activeConversation.type === "project") ? (
                   <div className="mt-4 w-full space-y-3 animate-in fade-in slide-in-from-top-2">
