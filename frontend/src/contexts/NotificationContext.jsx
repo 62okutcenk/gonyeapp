@@ -230,7 +230,7 @@ export const NotificationProvider = ({ children }) => {
           }, 25000);
         };
 
-        ws.onmessage = handleWebSocketMessage;
+        ws.onmessage = handleWebSocketMessageWithChat;
 
         ws.onclose = (event) => {
           if (!isActive) return;
