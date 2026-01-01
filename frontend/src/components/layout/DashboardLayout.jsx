@@ -456,7 +456,7 @@ export default function DashboardLayout() {
     if (user) {
       fetchData();
     }
-  }, [user?.is_admin, user]);
+  }, [user, fetchData]);
 
   // Global Search Handler
   const handleSearch = useCallback(async (query) => {
