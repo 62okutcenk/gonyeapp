@@ -1184,6 +1184,8 @@ async def update_customer(
     user: dict = Depends(get_current_user)
 ):
     """Update a customer"""
+    check_permission(user, "customers.manage")
+    
     # Verify customer exists
     customer = await db.customers.find_one(
         {"id": customer_id, "tenant_id": user["tenant_id"]}, 
@@ -1214,6 +1216,8 @@ async def update_customer(
 @api_router.delete("/customers/{customer_id}")
 async def delete_customer(customer_id: str, user: dict = Depends(get_current_user)):
     """Delete a customer (only if no projects exist)"""
+    check_permission(user, "customers.manage")
+    
     # Verify customer exists
     customer = await db.customers.find_one(
         {"id": customer_id, "tenant_id": user["tenant_id"]}, 
