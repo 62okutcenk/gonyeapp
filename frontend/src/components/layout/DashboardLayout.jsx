@@ -506,6 +506,19 @@ export default function DashboardLayout() {
     }
   };
 
+  // Keyboard shortcut for global search (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate("/login");
