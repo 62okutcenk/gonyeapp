@@ -61,6 +61,7 @@ class UserResponse(BaseModel):
     avatar_url: Optional[str] = None
     is_admin: bool = False
     setup_completed: bool = False
+    permissions_list: List[str] = []
     created_at: str
 
 class TokenResponse(BaseModel):
@@ -888,6 +889,7 @@ async def get_me(user: dict = Depends(get_current_user)):
         avatar_url=user.get("avatar_url"),
         is_admin=user.get("is_admin", False),
         setup_completed=setup_completed,
+        permissions_list=user.get("permissions_list", []),
         created_at=user["created_at"]
     )
 
