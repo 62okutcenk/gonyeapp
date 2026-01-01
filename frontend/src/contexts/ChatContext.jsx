@@ -1,21 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
+import { useNotifications } from "./NotificationContext";
 import { toast } from "sonner";
 
 const ChatContext = createContext(null);
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
-
-const getWsBaseUrl = () => {
-  if (typeof window !== "undefined" && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    return `${protocol}${window.location.host}`;
-  }
-  const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
-  return backendUrl.replace(/^http/, "ws");
-};
-
-const BASE_WS_URL = getWsBaseUrl();
 
 export const useChat = () => {
   const context = useContext(ChatContext);
@@ -27,16 +17,23 @@ export const useChat = () => {
 
 export const ChatProvider = ({ children }) => {
   const { token, isAuthenticated, user } = useAuth();
+  const { setChatMessageHandler } = useNotifications();
+  
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [pinnedMessages, setPinnedMessages] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [typingUsers, setTypingUsers] = useState({});
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  
+  const activeConversationRef = useRef(null);
 
-  const wsRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
+  // Keep ref in sync
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+  }, [activeConversation]);
 
   // Get auth headers
   const getHeaders = useCallback(() => ({
@@ -67,6 +64,10 @@ export const ChatProvider = ({ children }) => {
       if (before) url += `&before=${before}`;
       const response = await axios.get(url, getHeaders());
       setMessages(prev => before ? [...response.data, ...prev] : response.data);
+      
+      // Filter pinned messages
+      const pinned = response.data.filter(m => m.is_pinned);
+      setPinnedMessages(pinned);
     } catch (error) {
       console.error("Error fetching messages:", error);
     } finally {
@@ -135,6 +136,32 @@ export const ChatProvider = ({ children }) => {
     }
   }, [token, getHeaders]);
 
+  // Pin/Unpin message
+  const togglePinMessage = useCallback(async (messageId, isPinned) => {
+    if (!token) return false;
+    try {
+      await axios.put(
+        `${API_URL}/chat/messages/${messageId}/pin`,
+        { is_pinned: !isPinned },
+        getHeaders()
+      );
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, is_pinned: !isPinned } : m
+      ));
+      if (!isPinned) {
+        const msg = messages.find(m => m.id === messageId);
+        if (msg) setPinnedMessages(prev => [...prev, { ...msg, is_pinned: true }]);
+      } else {
+        setPinnedMessages(prev => prev.filter(m => m.id !== messageId));
+      }
+      toast.success(isPinned ? "Mesaj sabitlemesi kaldırıldı" : "Mesaj sabitlendi");
+      return true;
+    } catch (error) {
+      toast.error("İşlem başarısız");
+      return false;
+    }
+  }, [token, getHeaders, messages]);
+
   // Add reaction
   const addReaction = useCallback(async (messageId, emoji) => {
     if (!token) return false;
@@ -184,13 +211,15 @@ export const ChatProvider = ({ children }) => {
   }, [token, getHeaders, user]);
 
   // Create conversation
-  const createConversation = useCallback(async (type, participantIds, name = null) => {
+  const createConversation = useCallback(async (type, participantIds, name = null, description = null, avatarUrl = null) => {
     if (!token) return null;
     try {
       const payload = {
         type,
         participant_ids: participantIds,
-        name
+        name,
+        description,
+        avatar_url: avatarUrl
       };
       const response = await axios.post(
         `${API_URL}/chat/conversations`,
@@ -204,6 +233,70 @@ export const ChatProvider = ({ children }) => {
       return null;
     }
   }, [token, getHeaders, fetchConversations]);
+
+  // Update conversation (name, description, avatar)
+  const updateConversation = useCallback(async (conversationId, updates) => {
+    if (!token) return false;
+    try {
+      const response = await axios.put(
+        `${API_URL}/chat/conversations/${conversationId}`,
+        updates,
+        getHeaders()
+      );
+      setConversations(prev => prev.map(c => c.id === conversationId ? response.data : c));
+      if (activeConversation?.id === conversationId) {
+        setActiveConversation(response.data);
+      }
+      toast.success("Sohbet güncellendi");
+      return true;
+    } catch (error) {
+      toast.error("Güncelleme başarısız");
+      return false;
+    }
+  }, [token, getHeaders, activeConversation]);
+
+  // Add participant to group
+  const addParticipant = useCallback(async (conversationId, userId) => {
+    if (!token) return false;
+    try {
+      await axios.post(
+        `${API_URL}/chat/conversations/${conversationId}/participants?user_id=${userId}`,
+        {},
+        getHeaders()
+      );
+      await fetchConversations();
+      if (activeConversation?.id === conversationId) {
+        const updated = await axios.get(`${API_URL}/chat/conversations/${conversationId}`, getHeaders());
+        setActiveConversation(updated.data);
+      }
+      toast.success("Üye eklendi");
+      return true;
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Üye eklenemedi");
+      return false;
+    }
+  }, [token, getHeaders, fetchConversations, activeConversation]);
+
+  // Remove participant from group
+  const removeParticipant = useCallback(async (conversationId, userId) => {
+    if (!token) return false;
+    try {
+      await axios.delete(
+        `${API_URL}/chat/conversations/${conversationId}/participants/${userId}`,
+        getHeaders()
+      );
+      await fetchConversations();
+      if (activeConversation?.id === conversationId) {
+        const updated = await axios.get(`${API_URL}/chat/conversations/${conversationId}`, getHeaders());
+        setActiveConversation(updated.data);
+      }
+      toast.success("Üye çıkarıldı");
+      return true;
+    } catch (error) {
+      toast.error("Üye çıkarılamadı");
+      return false;
+    }
+  }, [token, getHeaders, fetchConversations, activeConversation]);
 
   // Send typing indicator
   const sendTypingIndicator = useCallback(async (conversationId, isTyping) => {
@@ -274,6 +367,7 @@ export const ChatProvider = ({ children }) => {
   const selectConversation = useCallback((conversation) => {
     setActiveConversation(conversation);
     setMessages([]);
+    setPinnedMessages([]);
     if (conversation) {
       fetchMessages(conversation.id);
       // Mark as read
@@ -283,13 +377,21 @@ export const ChatProvider = ({ children }) => {
     }
   }, [fetchMessages]);
 
-  // Handle WebSocket messages
+  // Handle WebSocket messages from NotificationContext
   const handleWsMessage = useCallback((data) => {
+    const currentConvId = activeConversationRef.current?.id;
+    
     switch (data.type) {
       case "new_message":
-        if (activeConversation?.id === data.conversation_id) {
-          setMessages(prev => [...prev, data.message]);
+        // Add message if we're in the same conversation
+        if (currentConvId === data.conversation_id) {
+          setMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(m => m.id === data.message.id)) return prev;
+            return [...prev, data.message];
+          });
         }
+        // Update conversation list
         fetchConversations();
         break;
 
@@ -308,6 +410,10 @@ export const ChatProvider = ({ children }) => {
       case "reaction_added":
         setMessages(prev => prev.map(m => {
           if (m.id === data.message_id) {
+            const exists = (m.reactions || []).some(
+              r => r.user_id === data.reaction.user_id && r.emoji === data.reaction.emoji
+            );
+            if (exists) return m;
             return { ...m, reactions: [...(m.reactions || []), data.reaction] };
           }
           return m;
@@ -357,12 +463,30 @@ export const ChatProvider = ({ children }) => {
       case "participant_added":
       case "participant_removed":
         fetchConversations();
+        if (currentConvId === data.conversation_id) {
+          // Refresh active conversation
+          axios.get(`${API_URL}/chat/conversations/${data.conversation_id}`, getHeaders())
+            .then(res => setActiveConversation(res.data))
+            .catch(() => {});
+        }
         break;
 
       default:
         break;
     }
-  }, [activeConversation, fetchConversations]);
+  }, [fetchConversations, getHeaders]);
+
+  // Register WebSocket handler with NotificationContext
+  useEffect(() => {
+    if (setChatMessageHandler) {
+      setChatMessageHandler(handleWsMessage);
+    }
+    return () => {
+      if (setChatMessageHandler) {
+        setChatMessageHandler(null);
+      }
+    };
+  }, [setChatMessageHandler, handleWsMessage]);
 
   // Initial fetch
   useEffect(() => {
@@ -375,6 +499,7 @@ export const ChatProvider = ({ children }) => {
     conversations,
     activeConversation,
     messages,
+    pinnedMessages,
     loadingConversations,
     loadingMessages,
     typingUsers,
@@ -384,15 +509,18 @@ export const ChatProvider = ({ children }) => {
     sendMessage,
     editMessage,
     deleteMessage,
+    togglePinMessage,
     addReaction,
     removeReaction,
     createConversation,
+    updateConversation,
+    addParticipant,
+    removeParticipant,
     selectConversation,
     sendTypingIndicator,
     searchUsers,
     searchResources,
-    uploadFile,
-    handleWsMessage
+    uploadFile
   };
 
   return (
