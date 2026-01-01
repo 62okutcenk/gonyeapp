@@ -98,6 +98,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Permission check helper - checks if user has a specific permission
+  const hasPermission = (permissionKey) => {
+    if (!user) return false;
+    // Admin has all permissions
+    if (user.is_admin) return true;
+    // Check permissions_list
+    return user.permissions_list?.includes(permissionKey) || false;
+  };
+
+  // Check multiple permissions (any of them)
+  const hasAnyPermission = (permissionKeys) => {
+    if (!user) return false;
+    if (user.is_admin) return true;
+    return permissionKeys.some(key => user.permissions_list?.includes(key));
+  };
+
+  // Check multiple permissions (all of them)
+  const hasAllPermissions = (permissionKeys) => {
+    if (!user) return false;
+    if (user.is_admin) return true;
+    return permissionKeys.every(key => user.permissions_list?.includes(key));
+  };
+
   const value = {
     user,
     token,
@@ -107,6 +130,9 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     refreshUser,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
     isAuthenticated: !!user,
   };
 
