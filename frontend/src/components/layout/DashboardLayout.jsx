@@ -608,14 +608,106 @@ export default function DashboardLayout() {
         sidebarCollapsed ? "lg:pl-20" : "lg:pl-64"
       )}>
         <header className="sticky top-0 z-40 hidden h-16 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 lg:flex">
-          <div className="flex items-center gap-2">
-             {/* Bağlantı durumu göstergesi (Opsiyonel Debug İçin) */}
-             {/* <Badge variant={connectionStatus === 'connected' ? 'outline' : 'destructive'} className="text-[10px]">
-                {connectionStatus === 'connected' ? 'Bağlı' : 'Bağlantı Yok'}
-             </Badge> */}
+          {/* Global Search */}
+          <div className="flex-1 max-w-md">
+            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start text-muted-foreground font-normal"
+                  onClick={() => setSearchOpen(true)}
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  <span>Proje veya müşteri ara...</span>
+                  <kbd className="pointer-events-none ml-auto hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <div className="flex items-center border-b px-3">
+                    <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <input
+                      className="flex h-11 w-full rounded-md bg-transparent py-3 px-2 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Ara..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      autoFocus
+                    />
+                    {searchLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    {searchQuery && !searchLoading && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSearchResults({ projects: [], customers: [] });
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <CommandList>
+                    {searchQuery.length < 2 ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">
+                        Aramak için en az 2 karakter girin
+                      </div>
+                    ) : searchResults.projects.length === 0 && searchResults.customers.length === 0 ? (
+                      <CommandEmpty>Sonuç bulunamadı</CommandEmpty>
+                    ) : (
+                      <>
+                        {searchResults.projects.length > 0 && (
+                          <CommandGroup heading="Projeler">
+                            {searchResults.projects.map((project) => (
+                              <CommandItem
+                                key={project.id}
+                                value={project.name}
+                                onSelect={() => handleSearchSelect("project", project.id)}
+                                className="cursor-pointer"
+                              >
+                                <FolderKanban className="h-4 w-4 mr-2 text-primary" />
+                                <div className="flex-1">
+                                  <p className="font-medium">{project.name}</p>
+                                  <p className="text-xs text-muted-foreground">{project.customer_name}</p>
+                                </div>
+                                <Badge variant="outline" className="text-[10px]">
+                                  {statusLabels[project.status] || project.status}
+                                </Badge>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                        {searchResults.customers.length > 0 && (
+                          <CommandGroup heading="Müşteriler">
+                            {searchResults.customers.map((customer) => (
+                              <CommandItem
+                                key={customer.id}
+                                value={customer.name}
+                                onSelect={() => handleSearchSelect("customer", customer.id)}
+                                className="cursor-pointer"
+                              >
+                                <User className="h-4 w-4 mr-2 text-blue-500" />
+                                <div className="flex-1">
+                                  <p className="font-medium">{customer.name}</p>
+                                  <p className="text-xs text-muted-foreground">{customer.phone}</p>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Subscription Badge (Admin Only) */}
             {user?.is_admin && subscription?.is_active && (
               <div 
                 className={cn(
@@ -637,6 +729,7 @@ export default function DashboardLayout() {
             <CurrentTime />
             <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
 
+            {/* Notifications */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button 
