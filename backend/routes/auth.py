@@ -212,6 +212,3 @@ async def get_me(user: dict = Depends(get_current_user)):
         permissions_list=user.get("permissions_list", []),
         created_at=user["created_at"]
     )
-
-# Import at end to avoid circular imports
-from middleware.auth import get_current_user
