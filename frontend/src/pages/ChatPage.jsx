@@ -229,8 +229,9 @@ const MessageBubble = ({
 
   return (
     <div
+      id={`msg-${message.id}`}
       className={cn(
-        "group flex gap-3 max-w-[85%] relative animate-in fade-in slide-in-from-bottom-2 duration-300",
+        "group flex gap-3 max-w-[85%] relative animate-in fade-in slide-in-from-bottom-2 duration-300 transition-all",
         isOwn ? "ml-auto flex-row-reverse" : ""
       )}
     >
