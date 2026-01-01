@@ -1491,7 +1491,41 @@ const ChatPage = () => {
 
             {/* Group name input */}
             {newChatType === "group" && (
-              <div className="space-y-3 animate-in slide-in-from-top-2">
+              <div className="space-y-4 animate-in slide-in-from-top-2">
+                {/* Group Avatar Upload */}
+                <div className="flex justify-center">
+                  <div className="relative group">
+                    <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
+                      {newGroupAvatarPreview ? (
+                        <AvatarImage src={newGroupAvatarPreview} />
+                      ) : null}
+                      <AvatarFallback className="text-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
+                        {newGroupName ? getInitials(newGroupName) : <Users className="h-8 w-8" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <input
+                      type="file"
+                      id="new-group-avatar"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setNewGroupAvatarFile(file);
+                          setNewGroupAvatarPreview(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="new-group-avatar"
+                      className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      <Camera className="h-6 w-6 text-white" />
+                    </label>
+                  </div>
+                </div>
+                <p className="text-xs text-center text-muted-foreground">Grup fotoğrafı ekleyin (opsiyonel)</p>
+                
                 <div>
                   <Label>Grup Adı *</Label>
                   <Input
