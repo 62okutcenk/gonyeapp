@@ -612,6 +612,8 @@ const ChatPage = () => {
   const [mentionLoading, setMentionLoading] = useState(false);
   const [selectedMentions, setSelectedMentions] = useState([]);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [newGroupAvatarFile, setNewGroupAvatarFile] = useState(null);
+  const [newGroupAvatarPreview, setNewGroupAvatarPreview] = useState(null);
 
   // Refs
   const messagesEndRef = useRef(null);
