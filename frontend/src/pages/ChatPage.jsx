@@ -710,9 +710,25 @@ const ChatPage = () => {
     return acc;
   }, {});
 
-  // Handle typing indicator
+  // Handle typing indicator and @mention detection
   const handleInputChange = (e) => {
-    setMessageInput(e.target.value);
+    const value = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    setMessageInput(value);
+    setCursorPosition(cursorPos);
+    
+    // Detect @mention
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    
+    if (mentionMatch) {
+      setShowMentionPicker(true);
+      setMentionQuery(mentionMatch[1]);
+    } else {
+      setShowMentionPicker(false);
+      setMentionQuery("");
+    }
+    
     if (activeConversation) {
       sendTypingIndicator(activeConversation.id, true);
       clearTimeout(typingTimeoutRef.current);
@@ -720,6 +736,24 @@ const ChatPage = () => {
         sendTypingIndicator(activeConversation.id, false);
       }, 2000);
     }
+  };
+
+  // Insert @mention into message
+  const insertMention = (mentionUser) => {
+    const textBeforeCursor = messageInput.slice(0, cursorPosition);
+    const textAfterCursor = messageInput.slice(cursorPosition);
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    
+    if (mentionMatch) {
+      const textBeforeMention = textBeforeCursor.slice(0, -mentionMatch[0].length);
+      const newText = `${textBeforeMention}@${mentionUser.full_name} ${textAfterCursor}`;
+      setMessageInput(newText);
+      setSelectedMentions(prev => [...prev, { id: mentionUser.id, name: mentionUser.full_name }]);
+    }
+    
+    setShowMentionPicker(false);
+    setMentionQuery("");
+    inputRef.current?.focus();
   };
 
   // Send message
