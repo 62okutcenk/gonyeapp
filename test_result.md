@@ -351,52 +351,40 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      BACKEND MODÜLERLEŞTİRME VE CHAT SİSTEMİ TAMAMLANDI:
+      CHAT SİSTEMİ v2.0 - TÜM DÜZELTMELER YAPILDI:
       
-      1. Backend Modülerleştirme:
-         - server.py: 3233 satır → 67 satır
-         - Yapı:
-           - /routes/ (auth, tenant, customers, setup, users, projects, files, dashboard, chat)
-           - /models/ (auth, tenant, common, project, customer, notification, file, chat)
-           - /services/ (auth_service, notification_service, project_service, websocket_manager)
-           - /middleware/ (auth)
-           - /utils/ (constants)
+      1. ✅ WebSocket Real-time Entegrasyonu:
+         - NotificationContext'e chat mesaj handler eklendi
+         - Mesajlar sayfa yenilenmeden anında geliyor
+         - Bildirimler çalışıyor
       
-      2. Chat Sistemi API Endpoints:
-         - GET /api/chat/conversations - Sohbet listesi
-         - POST /api/chat/conversations - Yeni sohbet (direct, group)
-         - GET /api/chat/conversations/{id} - Sohbet detayı
-         - PUT /api/chat/conversations/{id} - Sohbet güncelle
-         - POST /api/chat/conversations/{id}/participants - Katılımcı ekle
-         - DELETE /api/chat/conversations/{id}/participants/{user_id} - Katılımcı çıkar
-         - GET /api/chat/conversations/{id}/messages - Mesaj listesi
-         - POST /api/chat/conversations/{id}/messages - Mesaj gönder
-         - PUT /api/chat/messages/{id} - Mesaj düzenle (5 dk)
-         - DELETE /api/chat/messages/{id} - Mesaj sil (5 dk)
-         - POST /api/chat/messages/{id}/reactions - Tepki ekle
-         - DELETE /api/chat/messages/{id}/reactions/{emoji} - Tepki kaldır
-         - POST /api/chat/conversations/{id}/typing - Yazıyor göstergesi
-         - POST /api/chat/conversations/{id}/files - Dosya yükle
-         - GET /api/chat/search/users - @mention için arama
-         - GET /api/chat/search/resources - Link paylaşımı için arama
+      2. ✅ Grup Sohbeti Özellikleri (WhatsApp benzeri):
+         - Grup adı ve açıklama
+         - Üye ekleme/çıkarma
+         - Mesaj sabitleme (pin/unpin)
+         - Grup bilgilerini düzenleme
+         - Drawer ile sohbet detayları
       
-      3. Chat Özellikleri:
-         - Conversation tipleri: direct, project, group, general
-         - @mention parsing: @[user_id] formatı
-         - Link parsing: [[type:id]] formatı (project, customer, task, user, file)
-         - Emoji tepkileri: 👍 ❤️ 😊 🎉 😮 😢 😂 🔥
-         - Alıntı ile cevap (reply_to_id)
-         - Dosya/resim paylaşımı
-         - 5 dakika mesaj düzenleme/silme limiti
-         - Düzenlenen mesajlar "is_edited: true" ile işaretli
-         - Silinen mesajlar "Bu mesaj silindi." olarak gösterilir
-         - Real-time WebSocket bildirimleri
+      3. ✅ Kaynak Paylaşımı (+ butonu):
+         - Proje, müşteri, görev arama
+         - Link preview ile paylaşım
+         - [[type:id]] formatında link parsing
       
-      TEST EDİLECEKLER:
-      1. Auth endpoints (register, login, me)
-      2. Chat conversation CRUD
-      3. Message CRUD with reactions
-      4. @mention ve link parsing
+      4. ✅ Emoji Bug Fix:
+         - Popover controlled state ile düzeltildi
+         - Emoji seçilince kapanıyor
+      
+      5. ✅ Profesyonel UI:
+         - Tarih ayırıcıları
+         - Avatar gruplama
+         - Yazıyor animasyonu
+         - Sohbet bilgi drawer'ı
+         - Paylaşılan dosyalar bölümü
+         - Pinned messages bar
+      
+      6. ✅ Backend Güncellemeleri:
+         - PUT /api/chat/messages/{id}/pin - Mesaj sabitleme endpoint
+         - WebSocket broadcast güncellendi
 
   - agent: "testing"
     message: |
