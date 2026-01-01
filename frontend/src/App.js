@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ChatProvider } from "@/contexts/ChatContext";
 
 // Pages
 import LoginPage from "@/pages/LoginPage";
@@ -21,6 +22,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import CustomersPage from "@/pages/CustomersPage";
 import CustomerDetailPage from "@/pages/CustomerDetailPage";
+import ChatPage from "@/pages/ChatPage";
 
 // Layout
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -122,6 +124,7 @@ function AppRoutes() {
         <Route path="setup/roles" element={<SetupRolesPage />} />
         <Route path="setup/settings" element={<SetupSettingsPage />} />
         <Route path="subscription" element={<SubscriptionPage />} />
+        <Route path="chat" element={<ChatPage />} />
       </Route>
       
       {/* Catch all */}
@@ -136,8 +139,10 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <NotificationProvider>
-            <AppRoutes />
-            <Toaster position="top-right" richColors />
+            <ChatProvider>
+              <AppRoutes />
+              <Toaster position="top-right" richColors />
+            </ChatProvider>
           </NotificationProvider>
         </AuthProvider>
       </ThemeProvider>
