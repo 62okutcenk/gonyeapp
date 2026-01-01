@@ -64,7 +64,7 @@ class ConversationResponse(BaseModel):
     project_name: Optional[str] = None
     participant_ids: List[str] = []
     participants: List[Dict[str, Any]] = []  # {id, name, avatar_url, is_online}
-    created_by: str
+    created_by: Optional[str] = None
     created_by_name: Optional[str] = None
     last_message: Optional[Dict[str, Any]] = None
     unread_count: int = 0
