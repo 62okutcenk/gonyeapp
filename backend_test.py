@@ -766,6 +766,259 @@ class CraftForgeAPITester:
         
         return success
 
+    def test_chat_system(self):
+        """Test chat system APIs - NEW FEATURE"""
+        print("\n🔍 Testing Chat System...")
+        
+        # Test 1: Get conversations list (should include general chat)
+        success, conversations = self.run_test(
+            "Get Conversations List",
+            "GET",
+            "chat/conversations",
+            200
+        )
+        
+        general_chat_id = None
+        if success and isinstance(conversations, list):
+            self.log_test("Chat Conversations List", True, f"Found {len(conversations)} conversations")
+            
+            # Find general chat
+            general_chat = next((c for c in conversations if c.get("type") == "general"), None)
+            if general_chat:
+                general_chat_id = general_chat["id"]
+                self.log_test("General Chat Auto-Created", True, "General chat found")
+                
+                # Verify conversation structure
+                expected_fields = ["id", "type", "name", "participants", "created_at"]
+                all_fields_present = all(field in general_chat for field in expected_fields)
+                
+                if all_fields_present:
+                    self.log_test("Conversation Structure", True, "All expected fields present")
+                else:
+                    missing_fields = [f for f in expected_fields if f not in general_chat]
+                    self.log_test("Conversation Structure", False, "", f"Missing fields: {missing_fields}")
+            else:
+                self.log_test("General Chat Auto-Created", False, "", "General chat not found")
+        else:
+            self.log_test("Chat Conversations List", False, "", "Failed to get conversations")
+        
+        # Test 2: Get conversation details
+        if general_chat_id:
+            success, conversation_detail = self.run_test(
+                "Get Conversation Details",
+                "GET",
+                f"chat/conversations/{general_chat_id}",
+                200
+            )
+            
+            if success:
+                self.log_test("Get Conversation Details", True, "Conversation details retrieved")
+            else:
+                self.log_test("Get Conversation Details", False, "", "Failed to get conversation details")
+        
+        # Test 3: Send message to general chat
+        message_id = None
+        if general_chat_id:
+            message_data = {
+                "content": "Merhaba! Bu bir test mesajıdır. 👋",
+                "type": "text",
+                "mentions": [],
+                "links": [],
+                "reply_to_id": None,
+                "file_id": None
+            }
+            
+            success, message = self.run_test(
+                "Send Message to General Chat",
+                "POST",
+                f"chat/conversations/{general_chat_id}/messages",
+                200,
+                data=message_data
+            )
+            
+            if success and message:
+                message_id = message.get("id")
+                self.log_test("Send Chat Message", True, "Message sent successfully")
+                
+                # Verify message structure
+                expected_fields = ["id", "content", "sender_name", "created_at", "reactions"]
+                all_fields_present = all(field in message for field in expected_fields)
+                
+                if all_fields_present:
+                    self.log_test("Message Structure", True, "All expected fields present")
+                else:
+                    missing_fields = [f for f in expected_fields if f not in message]
+                    self.log_test("Message Structure", False, "", f"Missing fields: {missing_fields}")
+            else:
+                self.log_test("Send Chat Message", False, "", "Failed to send message")
+        
+        # Test 4: Get messages from conversation
+        if general_chat_id:
+            success, messages = self.run_test(
+                "Get Messages from Conversation",
+                "GET",
+                f"chat/conversations/{general_chat_id}/messages",
+                200
+            )
+            
+            if success and isinstance(messages, list):
+                self.log_test("Get Chat Messages", True, f"Retrieved {len(messages)} messages")
+            else:
+                self.log_test("Get Chat Messages", False, "", "Failed to get messages")
+        
+        # Test 5: Add reaction to message
+        if message_id:
+            reaction_data = {
+                "emoji": "👍"
+            }
+            
+            success, reaction = self.run_test(
+                "Add Reaction to Message",
+                "POST",
+                f"chat/messages/{message_id}/reactions",
+                200,
+                data=reaction_data
+            )
+            
+            if success:
+                self.log_test("Add Message Reaction", True, "Reaction added successfully")
+                
+                # Test removing reaction
+                success, _ = self.run_test(
+                    "Remove Message Reaction",
+                    "DELETE",
+                    f"chat/messages/{message_id}/reactions/👍",
+                    200
+                )
+                
+                if success:
+                    self.log_test("Remove Message Reaction", True, "Reaction removed successfully")
+                else:
+                    self.log_test("Remove Message Reaction", False, "", "Failed to remove reaction")
+            else:
+                self.log_test("Add Message Reaction", False, "", "Failed to add reaction")
+        
+        # Test 6: Edit message (within 5 minutes)
+        if message_id:
+            edit_data = {
+                "content": "Merhaba! Bu düzenlenmiş bir test mesajıdır. ✏️"
+            }
+            
+            success, edited_message = self.run_test(
+                "Edit Message",
+                "PUT",
+                f"chat/messages/{message_id}",
+                200,
+                data=edit_data
+            )
+            
+            if success:
+                if edited_message.get("is_edited"):
+                    self.log_test("Edit Message", True, "Message edited successfully")
+                else:
+                    self.log_test("Edit Message", False, "", "Message not marked as edited")
+            else:
+                self.log_test("Edit Message", False, "", "Failed to edit message")
+        
+        # Test 7: Search users for @mention
+        success, users = self.run_test(
+            "Search Users for Mention",
+            "GET",
+            "chat/search/users?q=test",
+            200
+        )
+        
+        if success and isinstance(users, list):
+            self.log_test("Search Users for Mention", True, f"Found {len(users)} users")
+        else:
+            self.log_test("Search Users for Mention", False, "", "Failed to search users")
+        
+        # Test 8: Search resources for links
+        success, resources = self.run_test(
+            "Search Resources for Links",
+            "GET",
+            "chat/search/resources?q=test",
+            200
+        )
+        
+        if success and isinstance(resources, dict):
+            expected_keys = ["projects", "customers", "tasks"]
+            all_keys_present = all(key in resources for key in expected_keys)
+            
+            if all_keys_present:
+                self.log_test("Search Resources for Links", True, "All resource types returned")
+            else:
+                missing_keys = [k for k in expected_keys if k not in resources]
+                self.log_test("Search Resources for Links", False, "", f"Missing resource types: {missing_keys}")
+        else:
+            self.log_test("Search Resources for Links", False, "", "Failed to search resources")
+        
+        # Test 9: Create direct conversation
+        if self.user_data:
+            # Try to create a direct conversation with self (should work for testing)
+            direct_data = {
+                "type": "direct",
+                "participant_ids": [self.user_data["id"]],
+                "name": None,
+                "description": None,
+                "avatar_url": None,
+                "project_id": None
+            }
+            
+            success, direct_conv = self.run_test(
+                "Create Direct Conversation",
+                "POST",
+                "chat/conversations",
+                200,
+                data=direct_data
+            )
+            
+            if success:
+                self.log_test("Create Direct Conversation", True, "Direct conversation created")
+                
+                # Test sending message to direct conversation
+                if direct_conv.get("id"):
+                    dm_message_data = {
+                        "content": "Bu bir direkt mesajdır.",
+                        "type": "text",
+                        "mentions": [],
+                        "links": [],
+                        "reply_to_id": None,
+                        "file_id": None
+                    }
+                    
+                    success, dm_message = self.run_test(
+                        "Send Direct Message",
+                        "POST",
+                        f"chat/conversations/{direct_conv['id']}/messages",
+                        200,
+                        data=dm_message_data
+                    )
+                    
+                    if success:
+                        self.log_test("Send Direct Message", True, "Direct message sent successfully")
+                    else:
+                        self.log_test("Send Direct Message", False, "", "Failed to send direct message")
+            else:
+                self.log_test("Create Direct Conversation", False, "", "Failed to create direct conversation")
+        
+        # Test 10: Delete message (within 5 minutes)
+        if message_id:
+            # Wait a moment to ensure we're still within the 5-minute limit
+            success, _ = self.run_test(
+                "Delete Message",
+                "DELETE",
+                f"chat/messages/{message_id}",
+                200
+            )
+            
+            if success:
+                self.log_test("Delete Message", True, "Message deleted successfully")
+            else:
+                self.log_test("Delete Message", False, "", "Failed to delete message")
+        
+        return True
+
     def run_all_tests(self):
         """Run all tests"""
         print("🚀 Starting CraftForge API Tests...")
