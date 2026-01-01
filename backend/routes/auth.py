@@ -6,6 +6,7 @@ from database import db
 from models.auth import UserRegister, UserLogin, UserResponse, TokenResponse
 from services.auth_service import hash_password, verify_password, create_token
 from utils.constants import DEFAULT_PERMISSIONS
+from middleware.auth import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
