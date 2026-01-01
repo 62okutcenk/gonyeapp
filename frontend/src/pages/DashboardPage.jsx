@@ -125,15 +125,10 @@ const StatCard = ({ title, value, icon: Icon, description, trend, loading, color
 );
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Permission helper
-  const hasPermission = (permission) => {
-    return user?.is_admin || user?.permissions_list?.includes(permission);
-  };
 
   useEffect(() => {
     const fetchStats = async () => {
