@@ -644,6 +644,7 @@ export default function DashboardLayout() {
               user={user}
               pendingTasks={pendingTaskCount}
               hasPermission={hasPermission}
+              chatUnreadCount={chatUnreadCount}
             />
           </SheetContent>
         </Sheet>
