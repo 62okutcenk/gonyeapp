@@ -439,7 +439,7 @@ const CurrentTime = () => {
 };
 
 export default function DashboardLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead, hasNewNotification, clearNewNotificationFlag } = useNotifications();
   const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
