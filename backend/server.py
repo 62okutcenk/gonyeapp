@@ -1047,6 +1047,8 @@ async def get_customers(
 @api_router.post("/customers", response_model=CustomerResponse)
 async def create_customer(data: CustomerCreate, user: dict = Depends(get_current_user)):
     """Create a new customer"""
+    check_permission(user, "customers.manage")
+    
     # Validate type
     valid_types = ["bireysel", "mimar", "muteahhit", "kurumsal"]
     if data.type not in valid_types:
