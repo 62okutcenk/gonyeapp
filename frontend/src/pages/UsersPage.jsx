@@ -221,10 +221,12 @@ export default function UsersPage() {
             Ekip üyelerini yönetin ve renk atamalarını yapın
           </p>
         </div>
-        <Button onClick={() => openDialog()} data-testid="add-user-button">
-          <Plus className="mr-2 h-4 w-4" />
-          Yeni Kullanıcı
-        </Button>
+        {hasPermission("users.manage") && (
+          <Button onClick={() => openDialog()} data-testid="add-user-button">
+            <Plus className="mr-2 h-4 w-4" />
+            Yeni Kullanıcı
+          </Button>
+        )}
       </div>
 
       {/* Search */}
