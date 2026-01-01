@@ -131,6 +131,7 @@ export default function SetupRolesPage() {
     const categoryLabels = {
       projects: "Projeler",
       tasks: "Görevler",
+      customers: "Müşteriler",
       setup: "Kurulum",
       users: "Kullanıcılar",
       settings: "Ayarlar",
