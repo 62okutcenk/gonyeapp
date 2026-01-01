@@ -1039,6 +1039,7 @@ class CraftForgeAPITester:
             self.test_project_activities,
             self.test_project_tasks,
             self.test_dashboard_stats,
+            self.test_chat_system,
         ]
         
         for test in tests:
